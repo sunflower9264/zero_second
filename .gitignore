@@ -1,0 +1,6 @@
+node_modules/
+dist/
+output/
+.nginx/logs/
+.nginx/tmp/
+.nginx/*.pid

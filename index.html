@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#f3eddd" />
+    <meta name="description" content="《零秒特工》是一款单指瞄准、瞬移连杀的轻量 H5 动作游戏。" />
+    <title>零秒特工 · ZERO SECOND</title>
+  </head>
+  <body>
+    <main id="app" aria-label="零秒特工游戏">
+      <canvas id="game" width="720" height="1280" aria-label="游戏画面"></canvas>
+
+      <div class="corner-controls" aria-label="快捷控制">
+        <button id="sound-btn" class="icon-btn" type="button" aria-label="静音">声</button>
+        <button id="pause-btn" class="icon-btn" type="button" aria-label="暂停">停</button>
+      </div>
+
+      <section id="title-screen" class="screen is-visible" aria-labelledby="game-title">
+        <div class="eyebrow">ONE-TOUCH INFILTRATION</div>
+        <h1 id="game-title"><span>零秒</span>特工</h1>
+        <p class="title-en">ZERO<br />SECOND</p>
+        <div class="rule"></div>
+        <p class="pitch">时间只在你行动时流动。<br />瞄准，突袭，别让连击断掉。</p>
+        <div class="control-card">
+          <div><b>单指拖向目标</b><small>进入子弹时间</small></div>
+          <span>→</span>
+          <div><b>松手突袭</b><small>击破守卫刷新冲刺</small></div>
+        </div>
+        <button id="start-btn" class="primary-btn" type="button">选择关卡 <span>↗</span></button>
+        <p id="best-label" class="microcopy">最高记录 000000</p>
+      </section>
+
+      <section id="level-screen" class="screen level-screen" aria-labelledby="level-title">
+        <header class="level-header">
+          <div>
+            <div class="eyebrow">MISSION BOARD</div>
+            <h2 id="level-title">选择关卡</h2>
+          </div>
+          <p id="total-stars" class="total-stars">★ 0 / 60</p>
+        </header>
+        <div id="level-grid" class="level-grid" role="grid" aria-label="关卡列表"></div>
+        <button id="level-back-btn" class="text-btn level-back" type="button">返回标题</button>
+      </section>
+
+      <section id="pause-screen" class="screen compact" aria-labelledby="pause-title">
+        <div class="eyebrow">MISSION HOLD</div>
+        <h2 id="pause-title">行动暂停</h2>
+        <button id="resume-btn" class="primary-btn" type="button">继续行动</button>
+        <button id="restart-btn" class="text-btn" type="button">重新开始本关</button>
+        <button id="pause-select-btn" class="text-btn" type="button">选择其他关卡</button>
+      </section>
+
+      <section id="result-screen" class="screen compact" aria-labelledby="result-title">
+        <div id="result-kicker" class="eyebrow">FLOOR SECURED</div>
+        <h2 id="result-title">楼层净空</h2>
+        <p id="result-stars" class="result-stars" aria-label="本关评分">★★★</p>
+        <p id="result-score" class="result-score">012400</p>
+        <div id="result-stats" class="stats"></div>
+        <button id="continue-btn" class="primary-btn" type="button">进入下一层 <span>↗</span></button>
+        <button id="replay-btn" class="text-btn" type="button">重玩本关</button>
+        <button id="select-btn" class="text-btn" type="button">选择关卡</button>
+        <button id="home-btn" class="text-btn" type="button">返回标题</button>
+      </section>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
