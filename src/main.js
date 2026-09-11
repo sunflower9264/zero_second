@@ -80,6 +80,7 @@ state.progress = loadProgress();
 // ?unlock=all. Invisible to normal players and it only touches the local save.
 if (typeof location !== 'undefined' && /[?&]unlock=all\b/.test(location.search)) {
   state.progress.unlockedThrough = LEVELS.length;
+  saveProgress();   // persist straight away, so the flag does not have to be re-typed every visit
 }
 
 function saveProgress() { writeStorage('zero-second-progress-v1', JSON.stringify(state.progress)); }
