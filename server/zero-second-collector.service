@@ -1,0 +1,23 @@
+[Unit]
+Description=Zero Second analytics collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/sunflower/workspace/gameworkspace/zero_second
+# The absolute nvm path is deliberate: node:sqlite is Stability 1.1 and can change across major
+# Node versions. Re-run the smoke test in server/README.md before repointing this at a new runtime.
+ExecStart=/home/sunflower/.nvm/versions/node/v24.15.0/bin/node /home/sunflower/workspace/gameworkspace/zero_second/server/collector.mjs
+Environment=PATH=/home/sunflower/.nvm/versions/node/v24.15.0/bin:/usr/local/bin:/usr/bin:/bin
+Environment=ZS_COLLECT_HOST=127.0.0.1
+Environment=ZS_COLLECT_PORT=18099
+Environment=ZS_COLLECT_DB=/home/sunflower/zero-second-analytics/events.db
+EnvironmentFile=-%h/.config/zero-second/collector.env
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

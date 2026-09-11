@@ -128,6 +128,43 @@ button { font: inherit; }
   padding: 2px 7px 16px 2px;
 }
 
+.chapter-heading { grid-column: 1 / -1; margin: 12px 0 2px; font-size: 13px; letter-spacing: .08em; }
+.chapter-heading:first-child { margin-top: 0; }
+.mission-brief {
+  position: absolute; z-index: 2; top: 36%; left: 7%; width: 86%; margin: 0;
+  padding: 16px 18px; border-left: 4px solid var(--cyan); background: rgba(243,237,221,.96);
+  color: var(--ink); font-size: clamp(13px, 3.5vw, 18px); line-height: 1.7; font-weight: 700;
+  box-shadow: 0 6px 24px rgba(20,33,61,.12); pointer-events: none;
+}
+.result-hint { margin: 10px 0; font-size: 13px; line-height: 1.6; font-weight: 700; }
+.storage-note { font-size: 12px; line-height: 1.5; }
+#orientation-screen { display: none; }
+@media (orientation: landscape) and (pointer: coarse) {
+  #orientation-screen { position: fixed; z-index: 20; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: var(--paper); }
+  #orientation-screen b { font-size: 32px; }
+  #orientation-screen span { font-size: 16px; }
+}
+.mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+
+.mode-btn {
+  min-height: 52px;
+  padding: 0 10px;
+  border: 2px solid var(--ink);
+  background: rgba(255,255,255,.42);
+  color: var(--ink);
+  font-size: clamp(14px, 3.6vw, 18px);
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: transform .13s ease, box-shadow .13s ease;
+}
+
+.mode-btn:hover, .mode-btn:focus-visible { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); outline: 3px solid rgba(22,185,187,.45); }
+.mode-btn small { display: block; margin-top: 2px; font-size: 10px; font-weight: 800; opacity: .62; }
+
+#title-select-btn { margin-top: 14px; }
+#title-screen .microcopy { margin-top: 8px; }
+
 .level-card {
   position: relative;
   min-height: 88px;
@@ -258,7 +295,18 @@ h2 { margin: 5px 0 8px; font-size: clamp(52px, 14vw, 86px); line-height: .95; le
 .result-stars { margin: 8px 0 0; color: var(--signal); font-size: clamp(36px, 10vw, 58px); line-height: 1; letter-spacing: .08em; }
 #result-screen .result-score { margin: 4px 0 12px; font-size: clamp(46px, 13vw, 78px); }
 #result-screen .stats { margin-bottom: 16px; }
-#result-screen .text-btn { margin-top: 7px; padding: 5px; }
+/* Two columns so all four secondary actions still fit above the fold on a 320x568 screen. */
+.result-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.result-actions .text-btn { margin-top: 2px; padding: 10px 5px; min-height: 40px; }
+
+.screen.compact { overflow-y: auto; }
+@media (max-height: 700px), (max-width: 360px) {
+  .screen.compact { padding: 62px 7% 20px; }
+  .screen.compact h2 { font-size: 42px; }
+  #result-screen .result-score { font-size: 44px; }
+  .stat { padding: 9px 5px; }
+  .result-hint { margin: 7px 0; font-size: 12px; }
+}
 
 .stats {
   display: grid;
@@ -272,8 +320,12 @@ h2 { margin: 5px 0 8px; font-size: clamp(52px, 14vw, 86px); line-height: .95; le
 .stat b { display: block; font-family: Impact, "Arial Narrow", sans-serif; font-size: clamp(24px, 6vw, 38px); }
 .stat small { font-size: 11px; opacity: .62; }
 
+/* The play field is a fixed 9:16 frame, so a taller phone always leaves bands. Paint them in the
+   same paper colour and drop the card shadow, otherwise a 390x844 screen (standalone/PWA) shows
+   75px of dead grey above and below and the game looks like a floating card. */
 @media (max-aspect-ratio: 9/16) {
-  #app { width: 100vw; height: min(100svh, calc(100vw * 1.7778)); }
+  html, body { background: var(--paper); }
+  #app { width: 100vw; height: min(100svh, calc(100vw * 1.7778)); box-shadow: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -105,30 +105,3 @@ test('authored difficulty follows a rising sawtooth and ends at the highest peak
   }
   assert.equal(LEVELS.at(-1).difficulty, Math.max(...LEVELS.map(level => level.difficulty)));
 });
-
-test('floor 20 has a twelve-move golden path', () => {
-  const level = LEVELS.at(-1);
-  const walls = level.walls.map(([x, y, w, h]) => ({ x, y, w, h }));
-  const enemies = level.enemies.map(([type, x, y]) => ({ x, y, r: type === 'armored' ? 27 : 23, hp: type === 'armored' ? 2 : 1 }));
-  const chips = level.chips.map(([x, y]) => ({ x, y, collected: false }));
-  const aims = [[120, 1020], [63, 821], [333, 821], [340, 720], [589, 617], [595, 361], [325, 361], [55, 361], [55, 137], [600, 160], [600, 160], [360, 220]];
-  const segmentDistance = (point, start, end) => {
-    const dx = end.x - start.x; const dy = end.y - start.y; const lengthSquared = dx * dx + dy * dy || 1;
-    const t = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared));
-    return Math.hypot(point.x - (start.x + dx * t), point.y - (start.y + dy * t));
-  };
-  let player = { x: level.start[0], y: level.start[1] };
-  for (const [aimX, aimY] of aims) {
-    const dx = aimX - player.x; const dy = aimY - player.y; const length = Math.hypot(dx, dy);
-    const scale = Math.min(270, length) / length;
-    const target = { x: player.x + dx * scale, y: player.y + dy * scale };
-    const end = safeCircleEndpoint(player.x, player.y, target.x, target.y, 19, walls, BOUNDS);
-    for (const enemy of enemies) if (enemy.hp > 0 && segmentDistance(enemy, player, end) <= enemy.r + 13) enemy.hp -= 1;
-    for (const chip of chips) if (!chip.collected && segmentDistance(chip, player, end) < 35) chip.collected = true;
-    player = end;
-  }
-  assert.equal(aims.length, level.parMoves);
-  assert.ok(enemies.every(enemy => enemy.hp === 0), 'golden path must defeat every enemy');
-  assert.ok(chips.every(chip => chip.collected), 'golden path must collect every data chip');
-  assert.ok(Math.hypot(player.x - level.portal[0], player.y - level.portal[1]) < 62, 'golden path must reach the portal');
-});

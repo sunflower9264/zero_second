@@ -4,12 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
     <meta name="theme-color" content="#f3eddd" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="零秒特工" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="description" content="《零秒特工》是一款单指瞄准、瞬移连杀的轻量 H5 动作游戏。" />
     <title>零秒特工 · ZERO SECOND</title>
   </head>
   <body>
     <main id="app" aria-label="零秒特工游戏">
       <canvas id="game" width="720" height="1280" aria-label="游戏画面"></canvas>
+      <p id="mission-brief" class="mission-brief" hidden></p>
 
       <div class="corner-controls" aria-label="快捷控制">
         <button id="sound-btn" class="icon-btn" type="button" aria-label="静音">声</button>
@@ -21,13 +28,18 @@
         <h1 id="game-title"><span>零秒</span>特工</h1>
         <p class="title-en">ZERO<br />SECOND</p>
         <div class="rule"></div>
-        <p class="pitch">时间只在你行动时流动。<br />瞄准，突袭，别让连击断掉。</p>
+        <p class="pitch">按住，让时间慢下来。<br />松手突袭，一击接一击。</p>
         <div class="control-card">
           <div><b>单指拖向目标</b><small>进入子弹时间</small></div>
           <span>→</span>
           <div><b>松手突袭</b><small>击破守卫刷新冲刺</small></div>
         </div>
-        <button id="start-btn" class="primary-btn" type="button">选择关卡 <span>↗</span></button>
+        <button id="start-btn" class="primary-btn" type="button">开始行动 <span>↗</span></button>
+        <div class="mode-row">
+          <button id="daily-btn" class="mode-btn" type="button">每日挑战</button>
+          <button id="endless-btn" class="mode-btn" type="button">无尽突围</button>
+        </div>
+        <button id="title-select-btn" class="text-btn" type="button">选择关卡</button>
         <p id="best-label" class="microcopy">最高记录 000000</p>
       </section>
 
@@ -39,7 +51,7 @@
           </div>
           <p id="total-stars" class="total-stars">★ 0 / 60</p>
         </header>
-        <div id="level-grid" class="level-grid" role="grid" aria-label="关卡列表"></div>
+        <div id="level-grid" class="level-grid" aria-label="关卡列表"></div>
         <button id="level-back-btn" class="text-btn level-back" type="button">返回标题</button>
       </section>
 
@@ -55,14 +67,25 @@
         <div id="result-kicker" class="eyebrow">FLOOR SECURED</div>
         <h2 id="result-title">楼层净空</h2>
         <p id="result-stars" class="result-stars" aria-label="本关评分">★★★</p>
+        <p id="result-hint" class="result-hint"></p>
         <p id="result-score" class="result-score">012400</p>
         <div id="result-stats" class="stats"></div>
         <button id="continue-btn" class="primary-btn" type="button">进入下一层 <span>↗</span></button>
-        <button id="replay-btn" class="text-btn" type="button">重玩本关</button>
-        <button id="select-btn" class="text-btn" type="button">选择关卡</button>
-        <button id="home-btn" class="text-btn" type="button">返回标题</button>
+        <div class="result-actions">
+          <button id="replay-btn" class="text-btn" type="button">重玩本关</button>
+          <button id="share-btn" class="text-btn" type="button">分享成绩</button>
+          <button id="select-btn" class="text-btn" type="button">选择关卡</button>
+          <button id="home-btn" class="text-btn" type="button">返回标题</button>
+        </div>
+        <p id="storage-note" class="storage-note" hidden>浏览器未允许保存，进度仅保留在本次打开期间。</p>
       </section>
     </main>
+    <aside id="orientation-screen" role="status"><b>请竖屏继续</b><span>竖屏操作，留出完整战场。</span></aside>
     <script type="module" src="/src/main.js"></script>
+    <script>
+      // navigator.serviceWorker is only exposed in a secure context, so over plain HTTP this stays
+      // inert and the game keeps working as an ordinary page.
+      if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+    </script>
   </body>
 </html>

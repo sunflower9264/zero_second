@@ -1,0 +1,2 @@
+- 纯前端 ES modules + Canvas 2D；Vite/npm 构建，无后端与运行时素材请求。
+- 浏览器回归使用 Playwright Chromium 的真实 touch 事件；Node 测试执行实际 main.js，只有浏览器绘制/存储边界替身。

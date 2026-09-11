@@ -1,0 +1,4 @@
+- npm test、npm run test:browser、npm run build、git diff --check。
+- 按 develop-web-game 技能运行其客户端并实际查看截图；纯触控游戏需额外真实touch回归。
+- 新关卡/几何/物理修改必须复核全部20关，不能只用连通性证明三星可达。
+- progress.md 追加证据，保留 Original prompt；真人留存/真机性能未经测试不得声称通过。

@@ -121,3 +121,128 @@ Original prompt: 当前目录有个泡泡游戏，你不管，不去看他的东
 - 删除桌面/键盘操作文案，状态接口改为明确描述 `touch only`，README 同步为纯手机 H5 说明。
 - iPhone 13 模拟回归：触控拖拽期间 `aiming=true` 且移动次数不增加，松手后移动次数 +1；鼠标拖动移动次数保持不变；暂停/继续触控按钮正常；无控制台错误。
 - `npm test` 10 项通过，`npm run build` 通过并生成 `index-VNmMf4MP.js`。
+
+## 2026-09-05 玩法公平性与全关审查
+
+- 用户授权继续优化游戏设计、审查全部关卡，并以商业品质为目标；当前继续按手机 H5、纯触控方向实施。
+- 修复开场说明期间敌人已行动的问题，增加首次触摸才开战的观察阶段与五章战术提示；首页直接开始/继续行动，保留独立选关入口。
+- 冷却与命中停顿期间接受触摸瞄准；提前松手只排队一次突袭，暂停/切关/取消指针时清除。冷却按真实时间恢复。
+- 预览与攻击共用 planDash，显示重甲回退落点和命中目标。炮塔开火前 0.45 秒锁定弹道并显示受墙阻挡的预警线；EMP 清除锁定。
+- 游戏内显示移动预算与无伤状态，结算说明星级条件；调整后的三星条件会重新计算既有记录。
+- 修复 localStorage 禁用时启动与结算崩溃，提示无法持久保存；重开清除旧停顿与粒子；横屏自动暂停并提示竖屏。
+- 新建实际 main.js 循环的测试环境，替代原终关自写静态模拟；启发式搜索并保存全部 20 关无伤路线。有限搜索不证明最短步数。
+- 按实测路线修订 F09/F11/F12/F13/F14/F15/F16/F18/F20 的目标步数，各增加 1 步；全部关卡保留三星可达且无伤可达。
+- 已通过 36 项 Node 测试；真实 Chromium 手机触控重放 20 关全部无伤三星，并验证暂停、重试、失败、存档恢复、禁用存储和小屏结算。横屏与连续进入下一关纳入最终回归。
+- 新增 npm run test:browser（自动启动 Vite）及 npm run audit:levels；首次运行需要 npx playwright install chromium。
+- 截图位于 output/browser-review/，完整逐关结果与真人试玩边界见 LEVEL_REVIEW.md。
+
+### 后续验证重点
+
+- 无讲解真人试玩：第一击、开门条件、重甲回退是否理解；观察 F03/F09/F12 的失败与退出原因。
+- 真机 Safari/WebView 兼容性、触摸延迟和持续性能仍需实测；自动通关不能替代留存与传播验证。
+- 平台尚未明确，不添加广告/账号/分享 SDK。没有宣称达到爆款或商业发布验收。
+
+### 本轮最终复核
+
+- 37 项自动测试全部通过，补充旧存档按新目标升级星级的回归。
+- 最终浏览器版本再次通过 20 关真实触控无伤三星、横屏暂停、关间继续、失败重试与禁用存储；errors.json 为空。
+- 已实际打开最终的炮塔预警、重甲预览、320px 结算、横屏提示与终关胜利截图；去掉胜利页重复选关入口。
+- develop-web-game 配套 Playwright 客户端通过，最终截图已查看；纯触控流程由 scripts/test-browser.mjs 补充验证。
+- npm run build 通过：JS gzip 12.62 kB、CSS gzip 2.63 kB；git diff --check 通过。本轮未修改 Nginx 或服务映射。
+- Serena 项目记忆已初始化；如需检查记忆引用，可在项目根目录运行 serena memories check。
+
+## 2026-09-05 原端口恢复部署
+
+- 按用户明确要求，将占用 18080 的 wotui-canvas Nginx 迁至 18081（IPv4/IPv6），同步其 deploy/nginx.conf 与 README；仅重载该应用的独立 Nginx。
+- 原配置备份在 /tmp/zero-second-port-move-kv5v1ywg/。
+- 确认 18080 释放后启动本游戏项目级 Nginx，恢复 0.0.0.0:18080。
+- 两个应用首页及 JS/CSS 均返回 200；18080 的首页、脚本和样式与当前 dist 文件逐字节一致。
+- 已通过部署页面真实手机触控第一击验证：playing、moves=1、guardsRemaining=1，无页面错误；截图 output/deployment/restored-18080.png。
+
+## 2026-09-05 教学提示按新内容出现收敛
+
+- 按用户要求取消逐关章节提示，只保留 F01 操作教学、F05 炮塔/护盾、F06 干扰器、F09 重甲、F10 医疗包；普通关卡不显示教学浮层，暂停恢复也不重新显示。
+- 关卡数据显式声明 brief，清除不再使用的章节 lesson；补充首现敌人/道具与提示分布一致性检查，以及全部 20 关浏览器可见性检查。
+- 38 项 Node 测试通过，20 关触控通关和提示分布回归通过；已查看普通关卡与新内容关卡截图。
+- 已构建并部署至 18080：index-D5-P68rk.js。首页及 JS/CSS 与 dist 逐字节一致，返回 200；部署页面复核 F02/F05/F06/F09/F10/F20 的提示状态正确。
+
+## 2026-09-11 留存优化三批改造（评审 → 实施 → 部署）
+
+### 本轮原始需求
+
+用户先要求评审「上线后能不能留住用户」，随后要求「全部去优化和修复，出个方案」，并明确：
+分三批实施、目标形态为网页版 PWA 且为后续移植小游戏留口子、授权新增轻量自建埋点后端。
+
+### 评审结论（改造前）
+
+- 无域名与 HTTPS，Service Worker 无法注册，游戏在手机上无法「添加主屏」，回访缺乏物理载体。
+- 内容仅 20 关，按实测步数估算首通约 15–30 分钟、终身内容 1–2 小时。
+- `maxCombo` 与 `elapsed` 计算了但从未显示；`best` 跨关取最大值导致分数不可比。
+- 失败界面不显示死因；F03 是首个有墙关卡却无教学。
+- 按住瞄准时世界以 0.14 倍速运行且无上限（实测 F05 双炮塔关按住 60 秒、躲掩体后零伤害）。
+
+### 第一批 · 能衡量
+
+- 新增 `src/analytics.js`：纯 ESM、传输层可注入、无定时器、静默失败、队列有界。
+- 新增 `server/collector.mjs`：`node:http` + `node:sqlite` 单文件，白名单校验事件与属性，
+  32KB 体积上限、按 IP 限流、`tally` 动态键单独清洗。以 user 级 systemd 常驻。
+- nginx 新增 `/api/` 反代与仅本机可访问的 `/api/health`；`server_name localhost` 未改动。
+- 结算新增最高连击与用时；失败新增死因分布与对症提示（按 `damagePlayer` 的 cause 归类）。
+- 存档 `progress.levels[id]` 新增 `bestScore`，首页「最高记录」改为「最佳单关」。
+- 修复撞墙空点无反馈：`planDash` 新增 `rejected`/`jammed`，撞击时给出音效、震屏、粒子与
+  瞄准期红色禁行提示。预览与攻击继续共用 `planDash`。
+- F02/F03 补教学（击破刷新冲刺、墙体截断冲刺）；教学分布断言新增 `walls` 维度。
+- 新增 favicon / apple-touch-icon；修复 390×844 下上下各 75px 灰边。
+
+### 第二批 · 内容无限化
+
+- 新增 `src/constants.js` 作为场地几何唯一来源，消除求解器与引擎的常量重复；
+  新增源码级断言防止 main.js 重新声明导致沙箱内静默遮蔽。
+- 求解器抽取为 `scripts/lib/beam-solver.mjs`；`audit:levels` 改为薄调用。
+  **验证：20 关路线与改造前已提交的 fixture 逐字节一致，无行为漂移。**
+- `main.js` 新增 `activeLevel()/loadLevelData/startLevelData`，并拆分 `state.floor` 的双重语义
+  （目录索引 vs 难度 `difficultyTier`）与 `runMode`。
+- 新增 `scripts/lib/level-gen.mjs`：构造式生成（先定路线再放墙，保证几何可通过）+
+  `scripts/gen-daily.mjs` 验证与拒绝采样。生成 90 关，接受率 5%，
+  38 个候选连兜底求解器都无法无伤通关而被拒绝。
+- 新增每日挑战与无尽突围；日期用固定 UTC+8 且可注入，测试不依赖真实时钟。
+- 存档升级 v2（含 v1 就地迁移、每日记录裁剪到 60 条、无尽最佳记录）；**存储键名保持不变**，
+  避免触发 runtime stub 缺失的 `removeItem` 造成连锁失败。
+
+### 第三批 · 分布形态
+
+- 手写 `public/manifest.webmanifest` + `public/sw.js`（无 vite-plugin-pwa、无 workbox、
+  未新建 vite.config.js）；`/assets/` 缓存优先、外壳网络优先、`/api/` 不缓存。
+- 分享成绩：canvas 生成成绩卡 + Web Share API，三层降级（分享 → 剪贴板 → 长按复制文本）；
+  用户主动取消分享不会静默复制。
+- 新增 `scripts/port-check.mjs`：规则层模块必须零浏览器全局，适配层通过注入隔离，
+  作为 `npm run port:check` 的退出码门禁。
+- 修复 nginx 未映射 `.webmanifest` 导致 manifest 以 `application/octet-stream` 返回。
+
+### 验证证据
+
+- `npm test`：74 项全绿，含 90 个生成关卡逐一在真实游戏循环中无伤通关、v1→v2 存档迁移、
+  分享降级链、撞墙反馈、死因归类。
+- `npm run test:browser`：20 关真实触控三星无伤重放、每日/无尽入口、分享载荷、
+  320/430 两档视口标题页与结算页无裁切、`errors.json` 为空。
+- `npm run port:check`：规则层 6 个模块零浏览器依赖，退出码 0。
+- 部署后真实浏览器复核：Service Worker 状态 `active`，manifest 以
+  `application/manifest+json` 解析且含 4 个图标，第 1 关通关结算提示含连击与用时，
+  每日挑战进入 `每日 08`，无页面错误。
+- 埋点端到端：部署页面通关后 `level_end` 落库，字段含 outcome/levelId/moves/par/hits/stars/
+  bestScore/maxCombo/floorScore/realMs。
+- `npm run build`：JS gzip 23.90 kB、CSS gzip 2.72 kB（90 关关卡池合计约 7.7 kB gzip）。
+
+### 已知边界（不得声称已达成）
+
+- **仍然没有域名**：HTTPS 未签发，PWA 只在 localhost 可完整验证；真机「添加到主屏」与断网
+  启动需要在拿到域名后复测。
+- **零真实玩家流量**：访问日志仍以扫描器为主，留存基线不存在。本轮只证明埋点链路可用，
+  不产出任何留存数字。
+- 生成关卡只使用猎手、数据与墙体。重甲需要两次命中、炮塔会横穿路线，两者都会破坏
+  「一个目标一次冲刺」的构造前提，因此留给手工战役。生成关卡在结构上比手工关卡简单。
+- 每日关卡池 90 天循环；到期需重跑 `npm run gen:daily`。
+- Service Worker 对 `/assets/` 永久缓存，多次发版会累积旧哈希资源（每次约 70KB），
+  需要时通过提升 `CACHE` 版本号清理。
+- 猎手没有寻路，被墙挡住时会一直贴着墙；本轮未改动该行为。
+- 本轮未提交 git。

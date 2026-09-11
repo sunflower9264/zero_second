@@ -1,0 +1,4 @@
+- npm test：全部物理、状态、评分和20关路线回归。
+- npm run test:browser：自启动 Vite；GAME_URL 可指定已有服务。首次需 npx playwright install chromium。
+- npm run audit:levels：有限宽度搜索，不证明最短路径；不会修改生产关卡。
+- npm run build：dist 为已有 Nginx 的静态根目录，注意构建可能立即反映到现有站点。

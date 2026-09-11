@@ -1,0 +1,5 @@
+- 独立游戏目录，不读取/修改同级泡泡游戏。
+- 纯手机触控是既定产品约束；不要恢复鼠标/键盘冲刺。
+- 玩家合法位移统一经过 src/physics.js；道具不能成为撤离条件。
+- 行为历史与本轮证据见 progress.md，关卡可达路线与验收边界见 LEVEL_REVIEW.md。
+- 工具链约束：`mem:tech_stack`；运行验证：`mem:suggested_commands`；代码约定：`mem:conventions`；完成检查：`mem:task_completion`。
