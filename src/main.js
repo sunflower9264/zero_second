@@ -3,7 +3,7 @@ import { CHAPTERS, LEVELS } from './levels.js';
 import { circleOverlapsRect, isCirclePositionValid, nearestValidCirclePosition, safeCircleEndpoint, stopBeforeCircle } from './physics.js';
 import { bestSingleLevelScore, calculateStars, createDefaultProgress, isRecordBetter, sanitizeProgress, totalStars } from './progress.js';
 import { createTracker, newSessionId } from './analytics.js';
-import { BOUNDS, COMBO_WINDOW, FIELD_BOTTOM, FIELD_TOP, H, MAX_DASH, PLAYER_R, TAU, W } from './constants.js';
+import { BOUNDS, COMBO_WINDOW, DASH_COOLDOWN, DODGE, FIELD_BOTTOM, FIELD_TOP, H, MAX_DASH, PLAYER_R, TAU, W } from './constants.js';
 import { buildShareText, shareOrCopy } from './share.js';
 
 const canvas = document.querySelector('#game');
@@ -57,7 +57,7 @@ const state = {
   player: { x: 360, y: 1080, vx: 0, vy: 0, invuln: 0 }, lastSafePlayer: { x: 360, y: 1080 },
   portal: { x: 360, y: 190, open: false }, enemies: [], chips: [], items: [], bullets: [], walls: [], trails: [], aiming: false, aimPointerId: null, aim: { x: 360, y: 800 },
   ready: true, queuedDash: null, dashCooldown: 0, wallContactGrace: 0, combo: 0, maxCombo: 0, comboTimer: 0,
-  levelData: null, difficultyTier: 0, runMode: 'campaign', lastRating: null,
+  levelData: null, difficultyTier: 0, runMode: 'campaign', lastRating: null, aimHoldReal: 0,
   elapsed: 0, realElapsed: 0, damageTally: {}, floorStartScore: 0, floorHits: 0, floorMoves: 0, kills: 0, trauma: 0, flash: 0, hitStop: 0,
   mute: readStorage('zero-second-muted') === '1',
   reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches, testMode: false,
@@ -144,9 +144,9 @@ function cloneLevelData(data) {
   state.items = data.items.map(([type, x, y], id) => ({ id, type, x, y, collected: false, spin: id * 1.7 }));
   state.enemies = data.enemies.map(([type, x, y], id) => ({
     id, type, x, y, r: type === 'armored' ? 27 : 23, hp: type === 'armored' ? 2 : 1,
-    maxHp: type === 'armored' ? 2 : 1, fire: .95 + id * .23, lockedAim: null, phase: id * 1.7, dead: false, hurt: 0,
+    maxHp: type === 'armored' ? 2 : 1, fire: .95 + id * .23, lockedAim: null, phase: id * 1.7, dead: false, hurt: 0, dodging: 0,
   }));
-  state.bullets = []; state.trails = []; state.aiming = false; state.aimPointerId = null; state.dashCooldown = 0; state.wallContactGrace = 0; state.combo = 0; state.comboTimer = 0;
+  state.bullets = []; state.trails = []; state.aiming = false; state.aimPointerId = null; state.dashCooldown = 0; state.wallContactGrace = 0; state.combo = 0; state.comboTimer = 0; state.aimHoldReal = 0;
   state.elapsed = 0; state.realElapsed = 0; state.damageTally = {}; state.floorHits = 0; state.floorMoves = 0; state.armor = 0; state.floorStartScore = state.score; state.trauma = 0; state.flash = 0;
   state.ready = true; state.queuedDash = null; state.hitStop = 0;
   for (const particle of particlePool) particle.active = false;
@@ -414,6 +414,29 @@ function movePlayerSafely(targetX, targetY) {
   return end;
 }
 
+// Chasers react to the aim line. Returns a per-frame displacement, or null when the enemy should
+// just keep walking at the player. It sidesteps away from the line *and* keeps closing, so waiting
+// out a dodge does not work either.
+function dodgeStep(enemy, speed, worldDt) {
+  if (!state.aiming) return null;
+  const delay = Math.max(DODGE.delayMin, DODGE.delayBase - state.difficultyTier * DODGE.delayPerTier);
+  if (state.aimHoldReal < delay) return null;
+  const ax = state.aim.x - state.player.x; const ay = state.aim.y - state.player.y;
+  const length = Math.hypot(ax, ay) || 1;
+  const ux = ax / length; const uy = ay / length;
+  const relX = enemy.x - state.player.x; const relY = enemy.y - state.player.y;
+  const along = relX * ux + relY * uy;
+  const side = relX * -uy + relY * ux;
+  if (along <= 40 || along > DODGE.range || Math.abs(side) > DODGE.width) return null;
+  const sign = side >= 0 ? 1 : -1;
+  const rate = (DODGE.base + state.difficultyTier * DODGE.perTier) * (enemy.type === 'armored' ? DODGE.armoredScale : 1);
+  enemy.dodging = .25;
+  return {
+    x: (-uy * sign * rate + ux * speed * DODGE.closeFraction) * worldDt,
+    y: (ux * sign * rate + uy * speed * DODGE.closeFraction) * worldDt,
+  };
+}
+
 function dashEndpoint(targetX, targetY) {
   const sx = state.player.x; const sy = state.player.y; let dx = targetX - sx; let dy = targetY - sy; const len = Math.hypot(dx, dy);
   if (len < 8) return { x: sx, y: sy, blocked: false };
@@ -427,6 +450,12 @@ function pointSegmentDistance(px, py, ax, ay, bx, by) {
   return Math.hypot(px - (ax + abx * t), py - (ay + aby * t));
 }
 
+// How fast a chaser closes. Shared with planDash, which needs it to work out how far the recoil
+// has to throw the player so that hitting armour is still safe.
+function chaseSpeed(enemy) {
+  return enemy.type === 'armored' ? 32 + state.difficultyTier * 2.5 : 52 + state.difficultyTier * 4;
+}
+
 function planDash(targetX, targetY) {
   const { x: sx, y: sy } = state.player;
   const end = dashEndpoint(targetX, targetY);
@@ -434,6 +463,9 @@ function planDash(targetX, targetY) {
   let landing = end;
   for (const enemy of hits) {
     if (enemy.hp <= 1) continue;
+    // The recoil throws the player outside the guard's reach, which is what makes the first of the
+    // two hits safe. dashToward adds a contact grace on top, because at high tiers a fast guard can
+    // still cross the remaining gap inside the cooldown.
     const recoil = stopBeforeCircle(sx, sy, end.x, end.y, enemy.x, enemy.y, enemy.r + PLAYER_R + 26);
     if (Math.hypot(recoil.x - sx, recoil.y - sy) < Math.hypot(landing.x - sx, landing.y - sy)) landing = recoil;
   }
@@ -455,15 +487,15 @@ function dashToward(targetX, targetY) {
   if (state.floorMoves === 1) tracker.track('first_dash', { levelId: activeLevel().id, sinceStartMs: Math.round(state.realElapsed * 1000), hits: hits.length });
   state.trails.push({ ax: sx, ay: sy, bx: end.x, by: end.y, life: .22, max: .22 });
   if (state.trails.length > 12) state.trails.shift();
-  movePlayerSafely(end.x, end.y); state.dashCooldown = .64;
-  let defeats = 0;
+  movePlayerSafely(end.x, end.y); state.dashCooldown = DASH_COOLDOWN;
+  let defeats = 0; let bounced = false;
   for (const enemy of hits) {
     enemy.hp -= 1; enemy.hurt = .2; burst(enemy.x, enemy.y, enemy.hp <= 0 ? COLORS.signal : COLORS.yellow, enemy.hp <= 0 ? 18 : 10, 240);
     if (enemy.hp <= 0) {
       enemy.dead = true; defeats += 1; state.kills += 1; state.combo += 1; state.maxCombo = Math.max(state.maxCombo, state.combo);
       state.comboTimer = COMBO_WINDOW; state.score += 100 * state.combo; sfx('kill');
     } else {
-      state.score += 30; sfx('hit');
+      bounced = true; state.score += 30; sfx('hit');
     }
   }
   movePlayerSafely(landing.x, landing.y);
@@ -474,6 +506,9 @@ function dashToward(targetX, targetY) {
     state.trauma = state.reducedMotion ? 0 : Math.min(1, state.trauma + .24 + defeats * .08);
     navigator.vibrate?.(defeats > 1 ? [18, 22, 25] : 16);
   } else sfx('dash');
+  // Bouncing off armour is the same bargain as being stopped by a wall: the game put the player
+  // there, so it must not also let the guard that caused it land a contact hit during the cooldown.
+  if (bounced) state.wallContactGrace = Math.max(state.wallContactGrace, state.dashCooldown + .08);
   if (end.blocked) { state.wallContactGrace = Math.max(state.wallContactGrace, state.dashCooldown + .08); state.trauma = state.reducedMotion ? 0 : Math.max(state.trauma, .18); burst(end.x, end.y, COLORS.ink, 5, 100); }
   refreshPortal();
   if (state.portal.open && Math.hypot(state.player.x - state.portal.x, state.player.y - state.portal.y) < 62) finishFloor();
@@ -531,6 +566,9 @@ function update(dt) {
   if (state.mode !== 'playing' || state.ready) { updateEffects(dt); return; }
   if (state.hitStop > 0) { state.hitStop = Math.max(0, state.hitStop - dt); updateEffects(dt); return; }
   const worldDt = dt * (state.aiming ? .14 : 1);
+  // Real time, not world time: this is what the enemies read to decide whether the player is
+  // taking a snap shot or standing there deliberating.
+  state.aimHoldReal = state.aiming ? state.aimHoldReal + dt : 0;
   state.elapsed += worldDt; state.realElapsed += dt; state.dashCooldown = Math.max(0, state.dashCooldown - dt); state.wallContactGrace = Math.max(0, state.wallContactGrace - worldDt);
   if (state.queuedDash && canAim()) {
     const target = state.queuedDash; state.queuedDash = null; dashToward(target.x, target.y);
@@ -551,10 +589,20 @@ function update(dt) {
       if (enemy.fire <= .45 && !enemy.lockedAim) enemy.lockedAim = { x: state.player.x, y: state.player.y };
       if (enemy.fire <= 0) { spawnBullet(enemy); enemy.fire = Math.max(.95, 1.9 - state.difficultyTier * .05); enemy.lockedAim = null; }
     } else {
+      enemy.dodging = Math.max(0, enemy.dodging - worldDt);
       const dx = state.player.x - enemy.x; const dy = state.player.y - enemy.y; const len = Math.hypot(dx, dy) || 1;
-      const speed = enemy.type === 'armored' ? 28 : 43 + state.difficultyTier * 2;
-      const nx = enemy.x + dx / len * speed * worldDt; const ny = enemy.y + dy / len * speed * worldDt;
-      if (!state.walls.some(w => circleOverlapsRect(nx, ny, enemy.r, w))) { enemy.x = nx; enemy.y = ny; }
+      // Roughly double the old curve: at 43 px/s a guard crossed 7px per dash while the player
+      // crossed 270, so it could never contest anywhere the player wanted to be.
+      const speed = chaseSpeed(enemy);
+      const dodge = dodgeStep(enemy, speed, worldDt);
+      const nx = enemy.x + (dodge ? dodge.x : dx / len * speed * worldDt);
+      const ny = enemy.y + (dodge ? dodge.y : dy / len * speed * worldDt);
+      const free = (x, y) => !state.walls.some(w => circleOverlapsRect(x, y, enemy.r, w));
+      if (free(nx, ny)) { enemy.x = nx; enemy.y = ny; }
+      // A sidestep that clips a corner used to stop dead against it, which reads as the guard
+      // giving up rather than evading. Slide along whichever axis is still open.
+      else if (dodge && free(nx, enemy.y)) enemy.x = nx;
+      else if (dodge && free(enemy.x, ny)) enemy.y = ny;
       if (len < enemy.r + PLAYER_R + 2 && state.wallContactGrace <= 0) damagePlayer(enemy.x, enemy.y, enemy.type);
     }
   }
@@ -630,7 +678,13 @@ function drawItem(item, time) {
 }
 
 function drawEnemy(enemy, time) {
-  if (enemy.dead) return; const flash = enemy.hurt > 0; ctx.save(); ctx.translate(enemy.x, enemy.y); ctx.translate(0, Math.sin(time * .004 + enemy.phase) * 3);
+  if (enemy.dead) return;
+  // A visible tell, otherwise a sidestep at 0.14x speed just looks like drift.
+  if (enemy.dodging > 0) {
+    ctx.save(); ctx.globalAlpha = Math.min(1, enemy.dodging * 4); ctx.strokeStyle = COLORS.cyan; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(enemy.x, enemy.y, enemy.r + 9, 0, TAU); ctx.stroke(); ctx.restore();
+  }
+  const flash = enemy.hurt > 0; ctx.save(); ctx.translate(enemy.x, enemy.y); ctx.translate(0, Math.sin(time * .004 + enemy.phase) * 3);
   ctx.shadowColor = 'rgba(255,77,54,.35)'; ctx.shadowBlur = 14; ctx.fillStyle = flash ? COLORS.white : enemy.type === 'armored' ? COLORS.yellow : COLORS.signal;
   ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 5;
   if (enemy.type === 'turret') {
@@ -657,7 +711,7 @@ function drawPlayer(time) {
   ctx.fillStyle = ready ? COLORS.cyan : COLORS.paper2; ctx.beginPath(); ctx.arc(0, 0, 7, 0, TAU); ctx.fill(); ctx.restore();
   if (!ready) {
     ctx.strokeStyle = COLORS.cyan; ctx.lineWidth = 4; ctx.beginPath();
-    ctx.arc(p.x, p.y, 30, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - state.dashCooldown / .64)); ctx.stroke();
+    ctx.arc(p.x, p.y, 30, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - state.dashCooldown / DASH_COOLDOWN)); ctx.stroke();
   }
 }
 
@@ -726,7 +780,7 @@ function drawHud() {
     ctx.restore();
   }
   if (state.dashCooldown > 0) {
-    const ratio = 1 - state.dashCooldown / .64; ctx.fillStyle = 'rgba(20,33,61,.18)'; ctx.fillRect(0, H - 10, W, 10);
+    const ratio = 1 - state.dashCooldown / DASH_COOLDOWN; ctx.fillStyle = 'rgba(20,33,61,.18)'; ctx.fillRect(0, H - 10, W, 10);
     ctx.fillStyle = COLORS.cyan; ctx.fillRect(0, H - 10, W * Math.max(0, ratio), 10);
   }
   ctx.fillStyle = COLORS.paper; ctx.fillRect(0, FIELD_BOTTOM + 4, W, 54);

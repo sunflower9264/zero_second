@@ -32,7 +32,11 @@ export function safeCircleEndpoint(sx, sy, tx, ty, radius, walls, bounds) {
         if (isCirclePositionValid(mx, my, radius, walls, bounds)) low = mid;
         else high = mid;
       }
-      return { x: sx + dx * low, y: sy + dy * low, blocked: true };
+      // Back off a fraction of a pixel from the contact point. Landing exactly on the boundary
+      // leaves the next dash's validity up to floating-point noise, which is how a player ends up
+      // standing flush against a wall and unable to move along it.
+      const safe = Math.max(0, low - Math.min(0.02, 0.75 / distance));
+      return { x: sx + dx * safe, y: sy + dy * safe, blocked: true };
     }
     lastT = t;
   }
