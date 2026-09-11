@@ -246,3 +246,56 @@ Original prompt: 当前目录有个泡泡游戏，你不管，不去看他的东
   需要时通过提升 `CACHE` 版本号清理。
 - 猎手没有寻路，被墙挡住时会一直贴着墙；本轮未改动该行为。
 - 本轮未提交 git。
+
+## 2026-09-11 移除 PWA 层（Service Worker + Manifest）
+
+### 起因
+
+用户提出不再按 PWA 应用方向适配，只当手机 H5 游戏做；对 Service Worker 的必要性提出质疑。
+该判断经实测验证成立，故整层移除。
+
+### 决定性证据（实测，非推断）
+
+联网状态下第二次进入（最常见路径）：
+
+| 指标 | 有 Service Worker | 无 Service Worker |
+| --- | ---: | ---: |
+| 导航耗时 | 66 ms | **33 ms** |
+| HTML 传输 | 5503 B | **300 B** |
+| JS/CSS 传输 | 0 B | 0 B |
+
+SW 让最常见路径慢一倍、多传 5.2 KB。原因是 nginx 已对 `/assets/` 设 `immutable, max-age=7d`，
+HTTP 缓存本就长期持有资源；27 KB 的页面做一次 304 协商比经过 SW 更便宜。
+**SW 想提供的“快”，网页本身已经免费给了。**
+
+对照实验同时确认了 SW 唯一不可替代的能力是离线：注销 SW 后断网刷新得到
+`net::ERR_INTERNET_DISCONNECTED`。但该能力要求玩家先安装到主屏，而安装要求 HTTPS
+（本项目没有），且无任何证据表明存在该使用场景。
+
+### 移除内容
+
+- 删除 `public/sw.js`、`public/manifest.webmanifest`、4 个 manifest 图标 PNG。
+- `index.html` 移除 manifest link、3 个 `apple-mobile-web-app-*` meta、SW 注册脚本。
+- nginx 移除 `location = /manifest.webmanifest`（连同上一轮为解决 MIME 类型加的修正）。
+- `scripts/test-browser.mjs` 移除 `serviceWorkers: 'block'`。
+- 保留 `favicon.svg` 与 `apple-touch-icon.png`：两者是站点图标，与 PWA 无关。
+
+### 反思
+
+上一轮为 PWA 所做的四项工作——改 nginx MIME 类型、测试加 SW 拦截、约定 `CACHE` 版本号纪律、
+准备补“首次访问不缓存 JS”的缺口——**没有一项在解决玩家的问题，全是在为一个未被验证的需求打补丁**。
+这是路径依赖：因为写了 SW，就不断修 SW 带来的问题。
+
+### 验证
+
+- `npm test` 74 项全绿；`npm run test:browser` 20 关真实触控三星无伤、无控制台错误。
+- 删除后同一测量脚本复核：导航 33 ms、HTML 300 B、资源 0 B、SW 未接管。
+- 构建产物 `index.html` 由 5.20 kB 降至 4.60 kB（gzip 2.00 → 1.74 kB）。
+
+### 已知边界
+
+- 删除后 `/sw.js` 与 `/manifest.webmanifest` 会被 `try_files` 回落到首页，以 `text/html` 200 返回。
+  理论上会让已注册 SW 的浏览器更新脚本失败而保留旧 SW；但真实玩家在裸 HTTP 下
+  `isSecureContext === false`，**从未有过注册成功的可能**，因此该路径无法在现实中发生，未做额外的 410 处理。
+- 放弃的能力：离线打开、添加到主屏。若将来上微信/抖音小游戏，这两项由平台自带（资源包与桌面图标），
+  不需要再写 Service Worker。

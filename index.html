@@ -6,10 +6,6 @@
     <meta name="theme-color" content="#f3eddd" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="零秒特工" />
-    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="description" content="《零秒特工》是一款单指瞄准、瞬移连杀的轻量 H5 动作游戏。" />
     <title>零秒特工 · ZERO SECOND</title>
   </head>
@@ -82,10 +78,5 @@
     </main>
     <aside id="orientation-screen" role="status"><b>请竖屏继续</b><span>竖屏操作，留出完整战场。</span></aside>
     <script type="module" src="/src/main.js"></script>
-    <script>
-      // navigator.serviceWorker is only exposed in a secure context, so over plain HTTP this stays
-      // inert and the game keeps working as an ordinary page.
-      if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
-    </script>
   </body>
 </html>

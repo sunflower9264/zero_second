@@ -10,8 +10,7 @@ const out = 'output/browser-review'; fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const errors = [];
 async function makePage({ unlocked = false, viewport, blocked = false } = {}) {
-  // A service worker would intercept fetches and make this suite flaky.
-  const context = await browser.newContext({ ...devices['iPhone 13'], deviceScaleFactor: 1, serviceWorkers: 'block', ...(viewport ? { viewport } : {}) });
+  const context = await browser.newContext({ ...devices['iPhone 13'], deviceScaleFactor: 1, ...(viewport ? { viewport } : {}) });
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
