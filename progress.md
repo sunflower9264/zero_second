@@ -467,3 +467,13 @@ D 证明降低难度无效（同样 0%），E 证明同样难度给够预算就�
 对一个以短会话为主的休闲游戏，这个代价大于它带来的动机收益。
 
 旧存档里残留的 `unlockedThrough` 会被 `sanitizeProgress` 静默忽略（已加断言）。
+
+### 删除分享功能（用户要求）
+
+移除 `src/share.js`、结算页的「分享成绩」按钮、canvas 成绩卡渲染、Web Share 三层降级，
+以及对应的 6 个测试与浏览器测试里的 `navigator.share` 桩。
+
+顺带把为放下第四个按钮而做的 `.result-actions` 两列网格还原为单列堆叠。
+`scripts/port-check.mjs` 的适配层现在只剩 `analytics.js`。
+
+包体：JS 25.06 → **24.02 kB gzip**。`npm test` 53 → 47 项（删掉 6 项分享测试），全部通过。

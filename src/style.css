@@ -281,9 +281,7 @@ h2 { margin: 5px 0 8px; font-size: clamp(52px, 14vw, 86px); line-height: .95; le
 .result-stars { margin: 8px 0 0; color: var(--signal); font-size: clamp(36px, 10vw, 58px); line-height: 1; letter-spacing: .08em; }
 #result-screen .result-score { margin: 4px 0 12px; font-size: clamp(46px, 13vw, 78px); }
 #result-screen .stats { margin-bottom: 16px; }
-/* Two columns so all four secondary actions still fit above the fold on a 320x568 screen. */
-.result-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
-.result-actions .text-btn { margin-top: 2px; padding: 10px 5px; min-height: 40px; }
+#result-screen .text-btn { margin-top: 2px; padding: 10px 5px; min-height: 40px; }
 
 .screen.compact { overflow-y: auto; }
 @media (max-height: 700px), (max-width: 360px) {

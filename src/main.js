@@ -4,7 +4,6 @@ import { circleOverlapsRect, isCirclePositionValid, nearestValidCirclePosition, 
 import { bestSingleLevelScore, calculateStars, createDefaultProgress, isRecordBetter, sanitizeProgress, totalStars } from './progress.js';
 import { createTracker, newSessionId } from './analytics.js';
 import { BOUNDS, COMBO_WINDOW, DASH_COOLDOWN, DODGE, FIELD_BOTTOM, FIELD_TOP, H, MAX_DASH, PLAYER_R, TAU, W } from './constants.js';
-import { buildShareText, shareOrCopy } from './share.js';
 
 const canvas = document.querySelector('#game');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -26,7 +25,7 @@ const ui = {
   home: document.querySelector('#home-btn'), best: document.querySelector('#best-label'), resultKicker: document.querySelector('#result-kicker'),
   resultTitle: document.querySelector('#result-title'), resultStars: document.querySelector('#result-stars'), resultScore: document.querySelector('#result-score'), resultStats: document.querySelector('#result-stats'),
   levelGrid: document.querySelector('#level-grid'), totalStars: document.querySelector('#total-stars'), levelBack: document.querySelector('#level-back-btn'), pauseSelect: document.querySelector('#pause-select-btn'), replay: document.querySelector('#replay-btn'), select: document.querySelector('#select-btn'),
-  share: document.querySelector('#share-btn'), progress: document.querySelector('#progress-label'),
+  progress: document.querySelector('#progress-label'),
 };
 const particlePool = Array.from({ length: 180 }, () => ({ active: false }));
 let storageAvailable = true;
@@ -210,60 +209,6 @@ function deathSummary() {
 }
 function deathTip() { return CAUSE_TIP[dominantCause()] || CAUSE_TIP.unknown; }
 
-// Draws the score card used as the share image. Returns null wherever canvas encoding is
-// unavailable (the node sandbox, or a browser that blocks toBlob), and the share falls back to text.
-function renderShareCard() {
-  try {
-    const card = document.createElement('canvas');
-    if (!card || typeof card.toBlob !== 'function') return Promise.resolve(null);
-    const rating = state.lastRating || { stars: 1 };
-    card.width = 720; card.height = 900;
-    const c = card.getContext('2d');
-    c.fillStyle = COLORS.paper; c.fillRect(0, 0, 720, 900);
-    c.strokeStyle = 'rgba(20,33,61,.065)'; c.lineWidth = 1;
-    for (let x = 0; x <= 720; x += 60) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 900); c.stroke(); }
-    for (let y = 0; y <= 900; y += 60) { c.beginPath(); c.moveTo(0, y); c.lineTo(720, y); c.stroke(); }
-    c.fillStyle = COLORS.ink; c.font = '900 40px system-ui'; c.textAlign = 'left';
-    c.fillText('零秒特工', 56, 96);
-    c.fillStyle = COLORS.signal; c.font = '800 24px system-ui'; c.fillText('ZERO SECOND', 56, 132);
-    c.fillStyle = 'rgba(20,33,61,.6)'; c.font = '700 26px system-ui';
-    c.fillText(activeLevel().name, 56, 214);
-    c.fillStyle = COLORS.signal; c.font = '900 96px system-ui';
-    c.fillText(`${'★'.repeat(rating.stars)}${'☆'.repeat(3 - rating.stars)}`, 50, 340);
-    c.fillStyle = COLORS.signal; c.font = '900 132px "Arial Narrow", system-ui';
-    c.fillText(String(state.score).padStart(6, '0'), 50, 500);
-    c.fillStyle = COLORS.ink; c.font = '800 30px system-ui';
-    const rows = [
-      [`${state.floorMoves} / ${activeLevel().parMoves}`, '移动 / 目标'],
-      [state.floorHits === 0 ? '无伤' : `${state.floorHits} 次`, '受伤'],
-      [`${state.maxCombo}×`, '最高连击'],
-      [`${state.realElapsed.toFixed(1)}s`, '用时'],
-    ];
-    rows.forEach(([value, label], index) => {
-      const y = 600 + index * 62;
-      c.fillStyle = COLORS.ink; c.font = '900 34px system-ui'; c.fillText(value, 56, y);
-      c.fillStyle = 'rgba(20,33,61,.55)'; c.font = '700 24px system-ui'; c.fillText(label, 280, y);
-    });
-    return new Promise(resolve => card.toBlob(blob => {
-      if (!blob || typeof File !== 'function') { resolve(null); return; }
-      resolve(new File([blob], 'zero-second.png', { type: 'image/png' }));
-    }, 'image/png'));
-  } catch { return Promise.resolve(null); }
-}
-
-async function shareResult() {
-  const level = activeLevel();
-  const text = buildShareText({
-    levelName: level.name, stars: state.lastRating?.stars ?? 1, moves: state.floorMoves, par: level.parMoves,
-    hits: state.floorHits, maxCombo: state.maxCombo, seconds: state.realElapsed, score: state.score,
-  });
-  ui.share.textContent = '准备中…';
-  const file = await renderShareCard();
-  const outcome = await shareOrCopy({ text, file });
-  if (outcome === 'manual') { document.querySelector('#result-hint').textContent = text; ui.share.textContent = '长按上方文字复制'; return; }
-  ui.share.textContent = outcome === 'copied' ? '已复制，去粘贴分享' : '分享成绩';
-}
-
 function showResult(kind) {
   const floorScore = state.score - state.floorStartScore;
   state.mode = kind; state.aiming = false; state.aimPointerId = null; state.queuedDash = null;
@@ -279,8 +224,6 @@ function showResult(kind) {
   const continueLabel = isVictory ? '选择关卡' : kind === 'gameOver' ? '重试本关' : '进入下一层';
   ui.continue.innerHTML = `${continueLabel} <span>↗</span>`;
   ui.replay.style.display = isClear || isVictory ? '' : 'none';
-  ui.share.style.display = isClear || isVictory ? '' : 'none';
-  ui.share.textContent = '分享成绩';
   ui.select.style.display = isVictory ? 'none' : '';
   document.querySelector('#result-hint').innerHTML = isClear || isVictory
     ? `${state.floorMoves <= activeLevel().parMoves ? '✓' : '○'} ${activeLevel().parMoves} 步内通关  ·  ${state.floorHits === 0 ? '✓' : '○'} 全程无伤<br>${state.maxCombo > 1 ? `最高连击 ${state.maxCombo}×` : '本关没有连击'} · 用时 ${state.realElapsed.toFixed(1)} 秒`
@@ -855,7 +798,6 @@ ui.start.addEventListener('click', () => startAtLevel(nextLevelToPlay())); docum
 ui.pause.addEventListener('click', () => pauseGame(true)); ui.sound.addEventListener('click', toggleMute);
 ui.resume.addEventListener('click', () => pauseGame(false)); ui.restart.addEventListener('click', restartFloor); ui.pauseSelect.addEventListener('click', openLevelSelect);
 ui.continue.addEventListener('click', continueResult); ui.replay.addEventListener('click', restartFloor); ui.select.addEventListener('click', openLevelSelect); ui.home.addEventListener('click', goHome); ui.levelBack.addEventListener('click', goHome);
-ui.share.addEventListener('click', shareResult);
 window.addEventListener('resize', resizeCanvas);
 document.addEventListener('visibilitychange', () => { if (document.hidden) { if (state.mode === 'playing') pauseGame(true); tracker.flush('hidden'); } });
 window.addEventListener('pagehide', () => tracker.flush('pagehide'));

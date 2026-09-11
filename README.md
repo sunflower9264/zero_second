@@ -50,7 +50,7 @@ sudo nginx -t && sudo systemctl reload nginx
 ## 自动检查接口
 
 ```bash
-npm test                  # 物理、存档、分享，以及全部 99 关的真实游戏循环重放
+npm test                  # 物理、存档，以及全部 99 关的真实游戏循环重放
 npx playwright install chromium  # 首次运行浏览器验证时安装
 npm run test:browser      # 自动启动本地服务，真实触控重放、截图与错误检查
 npm run audit:levels      # 搜索手工关卡的无伤通关路线，输出至 output/level-audit/

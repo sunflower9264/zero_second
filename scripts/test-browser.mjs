@@ -20,9 +20,6 @@ async function makePage({ viewport, blocked = false } = {}) {
   await page.addInitScript(() => {
     window.__zsAnalytics = [];
     window.__zsAnalyticsSink = body => { try { window.__zsAnalytics.push(JSON.parse(body)); } catch { /* ignore */ } return true; };
-    // Headless Chromium has no navigator.share, so record what the game would have handed over.
-    window.__zsShared = [];
-    Object.defineProperty(navigator, 'share', { configurable: true, value: async payload => { window.__zsShared.push(payload); } });
   });
   if (blocked) await page.addInitScript(() => { Storage.prototype.getItem = Storage.prototype.setItem = () => { throw new DOMException('Blocked', 'SecurityError'); }; });
   await page.goto(url); await page.evaluate(() => window.advanceTime(0));
@@ -137,13 +134,6 @@ try {
   assert.match(clearHint, /最高连击/, 'clear summary must show the chain the player just built');
   assert.match(clearHint, /用时/, 'clear summary must show the run time');
   await snapshot(telemetry, 'result-with-combo');
-  assert.equal(await telemetry.locator('#share-btn').isVisible(), true);
-  await telemetry.locator('#share-btn').tap();
-  await telemetry.waitForFunction(() => window.__zsShared.length > 0);
-  const shared = await telemetry.evaluate(() => window.__zsShared);
-  assert.match(shared[0].text, /零秒特工/, 'the share payload must carry the run summary');
-  assert.match(shared[0].text, /★★★/);
-  assert.equal(await telemetry.locator('#share-btn').textContent(), '分享成绩');
   await telemetry.context().close();
 
   const doomed = await makePage();

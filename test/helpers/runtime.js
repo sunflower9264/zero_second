@@ -5,7 +5,6 @@ import * as physics from '../../src/physics.js';
 import * as progress from '../../src/progress.js';
 import * as analytics from '../../src/analytics.js';
 import * as constants from '../../src/constants.js';
-import * as share from '../../src/share.js';
 
 // Execute the actual game loop; only browser rendering/audio/storage are stubbed.
 // Every module main.js imports must be spread in below, otherwise the sandbox sees `undefined`.
@@ -19,7 +18,7 @@ export function createRuntime({ storageBlocked = false, savedProgress, analytics
   const collected = [];
   const sink = analyticsSink || (body => collected.push(body));
   const sandbox = {
-    ...physics, ...progress, ...analytics, ...constants, ...share, CHAPTERS, LEVELS, console, performance: { now: () => 0 },
+    ...physics, ...progress, ...analytics, ...constants, CHAPTERS, LEVELS, console, performance: { now: () => 0 },
     document: { querySelector: key => { if (!elements.has(key)) elements.set(key, element()); return elements.get(key); }, createElement: element, addEventListener() {} },
     localStorage: { getItem: key => { if (storageBlocked) throw new Error('Storage blocked'); return store.get(key) ?? null; },
       setItem: (key, value) => { if (storageBlocked) throw new Error('Storage blocked'); store.set(key, value); } },

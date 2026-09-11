@@ -1,5 +1,5 @@
 // Portability guardrail. The plan is web first and a WeChat/Douyin mini-game port later, so the
-// rules layer (levels, physics, progress, share, analytics, constants) has to stay free of
+// rules layer (levels, physics, progress, analytics, constants) has to stay free of
 // browser globals. Only the presentation layer is allowed to touch the DOM, and this script fails
 // the build if that ever stops being true.
 import fs from 'node:fs';
@@ -8,9 +8,9 @@ import path from 'node:path';
 const BROWSER_GLOBALS = ['document', 'window', 'navigator', 'localStorage', 'AudioContext', 'matchMedia', 'requestAnimationFrame', 'File', 'Blob', 'fetch', 'location'];
 // main.js is the presentation shell: rendering, DOM wiring and the input path live here by design.
 const PRESENTATION_LAYER = new Set(['main.js']);
-// Adapters necessarily touch the host's network and share APIs, but they take those as injectable
+// Adapters necessarily touch the host's network API, but they take it as an injectable
 // parameters, so a port swaps the call site rather than the module.
-const ADAPTER_LAYER = new Set(['analytics.js', 'share.js']);
+const ADAPTER_LAYER = new Set(['analytics.js']);
 
 const dir = 'src';
 const files = fs.readdirSync(dir).filter(name => name.endsWith('.js')).sort();
