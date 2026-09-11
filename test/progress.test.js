@@ -17,16 +17,20 @@ test('records prefer stars, then hits, then moves', () => {
 });
 
 test('progress sanitization clamps values and ignores unknown levels', () => {
-  const result = sanitizeProgress({ version: 2, unlockedThrough: 99, levels: { f01: { stars: 9, moves: -2, hits: '1' }, nope: { stars: 3 } } }, ['f01', 'f02']);
+  const result = sanitizeProgress({ version: 2, levels: { f01: { stars: 9, moves: -2, hits: '1' }, nope: { stars: 3 } } }, ['f01', 'f02']);
   assert.equal(result.version, 2);
-  assert.equal(result.unlockedThrough, 2);
   assert.deepEqual(result.levels, { f01: { stars: 3, moves: 0, hits: 1, bestScore: 0 } });
 });
 
 test('a current save round-trips and every absent field is defaulted', () => {
-  const parsed = sanitizeProgress({ version: 2, unlockedThrough: 3, levels: { f01: { stars: 2, moves: 5, hits: 1 } } }, ['f01', 'f02', 'f03']);
-  assert.deepEqual(parsed, { version: 2, unlockedThrough: 3, levels: { f01: { stars: 2, moves: 5, hits: 1, bestScore: 0 } } });
+  const parsed = sanitizeProgress({ version: 2, levels: { f01: { stars: 2, moves: 5, hits: 1 } } }, ['f01', 'f02', 'f03']);
+  assert.deepEqual(parsed, { version: 2, levels: { f01: { stars: 2, moves: 5, hits: 1, bestScore: 0 } } });
   assert.deepEqual(sanitizeProgress(parsed, ['f01', 'f02', 'f03']), parsed, 'sanitizing twice must be a no-op');
+});
+
+test('a leftover unlock gate in an old save is simply ignored', () => {
+  const parsed = sanitizeProgress({ version: 2, unlockedThrough: 7, levels: { f01: { stars: 1, moves: 3, hits: 0 } } }, ['f01', 'f02']);
+  assert.deepEqual(parsed, { version: 2, levels: { f01: { stars: 1, moves: 3, hits: 0, bestScore: 0 } } });
 });
 
 test('a save from any other schema generation is discarded', () => {

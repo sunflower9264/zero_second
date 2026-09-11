@@ -76,13 +76,6 @@ function loadProgress() {
 }
 state.progress = loadProgress();
 
-// Debug flag for spot-checking the campaign without replaying it: open any level link with
-// ?unlock=all. Invisible to normal players and it only touches the local save.
-if (typeof location !== 'undefined' && /[?&]unlock=all\b/.test(location.search)) {
-  state.progress.unlockedThrough = LEVELS.length;
-  saveProgress();   // persist straight away, so the flag does not have to be re-typed every visit
-}
-
 function saveProgress() { writeStorage('zero-second-progress-v1', JSON.stringify(state.progress)); }
 function renderLevelSelect() {
   ui.totalStars.textContent = `★ ${totalStars(state.progress)} / ${LEVELS.length * 3}`;
@@ -99,19 +92,18 @@ function renderLevelSelect() {
       heading.textContent = `${String(chapter.number).padStart(2, '0')}  ${chapter.name}`;
       ui.levelGrid.appendChild(heading);
     }
-    const unlocked = index < state.progress.unlockedThrough;
     const record = state.progress.levels[level.id];
     const card = document.createElement('button');
-    card.type = 'button'; card.className = 'level-card'; card.disabled = !unlocked;
-    card.setAttribute('aria-label', unlocked ? `${index + 1} ${level.name}` : `${index + 1} ${level.name}，已锁定`);
-    card.innerHTML = unlocked ? `<span class="level-number">${String(index + 1).padStart(2, '0')}</span><span class="level-name">${level.name}</span><span class="level-stars">${'★'.repeat(record?.stars || 0)}${'☆'.repeat(3 - (record?.stars || 0))}</span>` : `<span class="level-number">${String(index + 1).padStart(2, '0')}</span><span class="level-lock">锁定</span><span class="level-stars">☆☆☆</span>`;
-    if (unlocked) card.addEventListener('click', () => startAtLevel(index));
+    card.type = 'button'; card.className = 'level-card';
+    card.setAttribute('aria-label', `${index + 1} ${level.name}`);
+    card.innerHTML = `<span class="level-number">${String(index + 1).padStart(2, '0')}</span><span class="level-name">${level.name}</span><span class="level-stars">${'★'.repeat(record?.stars || 0)}${'☆'.repeat(3 - (record?.stars || 0))}</span>`;
+    card.addEventListener('click', () => startAtLevel(index));
     ui.levelGrid.appendChild(card);
   });
 }
 function openLevelSelect() { state.mode = 'levelSelect'; state.aiming = false; state.aimPointerId = null; state.queuedDash = null; renderLevelSelect(); setVisibleScreen('level'); }
 function startAtLevel(index) {
-  if (index < 0 || index >= state.progress.unlockedThrough) return;
+  if (index < 0 || index >= LEVELS.length) return;
   state.runMode = 'campaign';
   state.floor = index; state.score = 0; state.hp = 3; state.kills = 0; state.maxCombo = 0; cloneLevel(index); state.mode = 'playing'; setVisibleScreen(); sfx('start');
   tracker.track('level_start', { levelId: LEVELS[index].id, index });
@@ -175,9 +167,15 @@ function restartFloor() {
   state.score = state.floorStartScore; state.hp = 3; cloneLevelData(activeLevel()); state.mode = 'playing'; setVisibleScreen(); sfx('start');
 }
 
+// "Continue" now means the first level with no record, since nothing is gated any more.
+function nextLevelToPlay() {
+  const index = LEVELS.findIndex(level => !state.progress.levels[level.id]);
+  return index === -1 ? LEVELS.length - 1 : index;
+}
+
 function refreshTitle() {
   const cleared = Object.keys(state.progress.levels).length;
-  ui.start.innerHTML = state.progress.unlockedThrough > 1 ? '继续行动 <span>↗</span>' : '开始行动 <span>↗</span>';
+  ui.start.innerHTML = cleared > 0 ? '继续行动 <span>↗</span>' : '开始行动 <span>↗</span>';
   ui.best.textContent = `最佳单关 ${String(bestSingleLevelScore(state.progress)).padStart(6, '0')}`;
   ui.progress.textContent = `已通关 ${cleared} / ${LEVELS.length}  ·  星 ${totalStars(state.progress)} / ${LEVELS.length * 3}`;
 }
@@ -303,7 +301,6 @@ function finishFloor() {
     const previous = state.progress.levels[data.id];
     rating.bestScore = Math.max(previous?.bestScore || 0, floorScore);
     state.progress.levels[data.id] = isRecordBetter(rating, previous) ? rating : { ...previous, bestScore: rating.bestScore };
-    state.progress.unlockedThrough = Math.min(LEVELS.length, Math.max(state.progress.unlockedThrough, state.floor + 2));
   }
   state.lastRating = rating; saveProgress();
   const isFinal = state.runMode === 'campaign' && state.floor === LEVELS.length - 1;
@@ -832,7 +829,7 @@ function renderGameToText() {
     items: state.items.filter(item => !item.collected).map(item => ({ type: item.type, x: item.x, y: item.y })),
     collision: { playerOverlapsWall: playerOverlapsWall(), walls: state.walls },
     rating: state.mode === 'floorClear' || state.mode === 'victory' ? state.lastRating : undefined,
-    progression: { unlockedThrough: state.progress.unlockedThrough, levels: state.mode === 'levelSelect' ? state.progress.levels : undefined },
+    progression: { levels: state.mode === 'levelSelect' ? state.progress.levels : undefined },
     controls: 'touch only: hold and drag toward target, release to dash; use on-screen buttons for pause and sound',
   });
 }
@@ -854,7 +851,7 @@ canvas.addEventListener('contextmenu', event => event.preventDefault());
 function toggleMute() {
   state.mute = !state.mute; writeStorage('zero-second-muted', state.mute ? '1' : '0'); ui.sound.textContent = state.mute ? '静' : '声'; ui.sound.setAttribute('aria-label', state.mute ? '取消静音' : '静音');
 }
-ui.start.addEventListener('click', () => startAtLevel(state.progress.unlockedThrough - 1)); document.querySelector('#title-select-btn').addEventListener('click', openLevelSelect);
+ui.start.addEventListener('click', () => startAtLevel(nextLevelToPlay())); document.querySelector('#title-select-btn').addEventListener('click', openLevelSelect);
 ui.pause.addEventListener('click', () => pauseGame(true)); ui.sound.addEventListener('click', toggleMute);
 ui.resume.addEventListener('click', () => pauseGame(false)); ui.restart.addEventListener('click', restartFloor); ui.pauseSelect.addEventListener('click', openLevelSelect);
 ui.continue.addEventListener('click', continueResult); ui.replay.addEventListener('click', restartFloor); ui.select.addEventListener('click', openLevelSelect); ui.home.addEventListener('click', goHome); ui.levelBack.addEventListener('click', goHome);
@@ -869,7 +866,7 @@ ui.sound.textContent = state.mute ? '静' : '声';
 ui.sound.setAttribute('aria-label', state.mute ? '取消静音' : '静音');
 cloneLevel(0); refreshTitle(); setVisibleScreen('title'); resizeCanvas(); requestAnimationFrame(frame);
 tracker.track('session_start', {
-  returning: state.progress.unlockedThrough > 1, stars: totalStars(state.progress), levels: Object.keys(state.progress.levels).length,
+  returning: Object.keys(state.progress.levels).length > 0, stars: totalStars(state.progress), levels: Object.keys(state.progress.levels).length,
   vw: window.innerWidth || 0, vh: window.innerHeight || 0, dpr: window.devicePixelRatio || 1,
   standalone: matchMedia('(display-mode: standalone)').matches,
 });

@@ -31,7 +31,6 @@ export function createRuntime({ storageBlocked = false, savedProgress, analytics
   vm.runInContext(`${source}\n particlePool.length = 0; globalThis.game = { state, startAtLevel, restartFloor, continueResult, pauseGame, onPointerDown, onPointerUp, onPointerMove, cancelPointer, dashToward, planDash, collectItem, update, damagePlayer, finishFloor, renderGameToText, loadLevelData, startLevelData, cloneLevelData, activeLevel };`, sandbox);
   const game = sandbox.game;
   game.state.mute = true;
-  game.state.progress.unlockedThrough = LEVELS.length;
   game.step = seconds => { for (let elapsed = 0; elapsed < seconds - 1e-8; elapsed += 1 / 60) game.update(1 / 60); };
   game.touch = (x, y, hold = .12) => {
     const event = { pointerType: 'touch', pointerId: 1, clientX: x, clientY: y };

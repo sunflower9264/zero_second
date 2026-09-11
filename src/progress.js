@@ -1,4 +1,7 @@
-export function createDefaultProgress() { return { version: 2, unlockedThrough: 1, levels: {} }; }
+// No unlock gate: every level in the list is playable from the start. Stars are the progress
+// record, and a 99-entry list is long enough that gating it only ever blocked a player who was
+// stuck on one level from seeing anything else.
+export function createDefaultProgress() { return { version: 2, levels: {} }; }
 
 function clampInt(value, min, max) {
   const parsed = Number.parseInt(value, 10);
@@ -12,7 +15,6 @@ export function sanitizeProgress(value, levelIds) {
   if (!value || typeof value !== 'object') return createDefaultProgress();
   if (Number.parseInt(value.version, 10) !== 2) return createDefaultProgress();
   const progress = createDefaultProgress();
-  progress.unlockedThrough = clampInt(value.unlockedThrough, 1, levelIds.length);
   if (value.levels && typeof value.levels === 'object') {
     for (const id of levelIds) {
       const entry = value.levels[id];

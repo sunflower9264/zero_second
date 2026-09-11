@@ -28,7 +28,7 @@ test('blocked local storage does not prevent startup or level completion', () =>
 });
 
 test('existing records receive the stars earned under rebalanced move targets', () => {
-  const game = createRuntime({ savedProgress: { version: 2, unlockedThrough: 10, levels: { f09: { stars: 2, moves: 6, hits: 0 } } } });
+  const game = createRuntime({ savedProgress: { version: 2, levels: { f09: { stars: 2, moves: 6, hits: 0 } } } });
   assert.equal(game.state.progress.levels.f09.stars, 3);
   assert.equal(game.state.progress.levels.f09.moves, 6);
 });

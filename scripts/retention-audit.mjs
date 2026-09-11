@@ -18,7 +18,7 @@ export async function newPage(browser, { unlocked = false, viewport, realtime = 
   const errors = [];
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   page.on('console', m => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
-  if (unlocked) await page.addInitScript(() => localStorage.setItem('zero-second-progress-v1', JSON.stringify({ version: 2, unlockedThrough: 20, levels: {} })));
+  if (unlocked) await page.addInitScript(() => localStorage.setItem('zero-second-progress-v1', JSON.stringify({ version: 2, levels: {} })));
   await page.goto(URL);
   await page.waitForFunction(() => typeof window.advanceTime === 'function');
   if (!realtime) await page.evaluate(() => window.advanceTime(0));

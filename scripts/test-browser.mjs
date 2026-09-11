@@ -9,7 +9,7 @@ const url = process.env.GAME_URL || server.resolvedUrls.local[0];
 const out = 'output/browser-review'; fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const errors = [];
-async function makePage({ unlocked = false, viewport, blocked = false } = {}) {
+async function makePage({ viewport, blocked = false } = {}) {
   const context = await browser.newContext({ ...devices['iPhone 13'], deviceScaleFactor: 1, ...(viewport ? { viewport } : {}) });
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
@@ -24,7 +24,6 @@ async function makePage({ unlocked = false, viewport, blocked = false } = {}) {
     window.__zsShared = [];
     Object.defineProperty(navigator, 'share', { configurable: true, value: async payload => { window.__zsShared.push(payload); } });
   });
-  if (unlocked) await page.addInitScript(() => localStorage.setItem('zero-second-progress-v1', JSON.stringify({ version: 2, unlockedThrough: 99, levels: {} })));
   if (blocked) await page.addInitScript(() => { Storage.prototype.getItem = Storage.prototype.setItem = () => { throw new DOMException('Blocked', 'SecurityError'); }; });
   await page.goto(url); await page.evaluate(() => window.advanceTime(0));
   return page;
@@ -47,7 +46,7 @@ try {
   const first = await makePage();
   await snapshot(first, 'title');
   await first.locator('#title-select-btn').tap();
-  assert.equal(await first.locator('.level-card:not(:disabled)').count(), 1);
+  assert.equal(await first.locator('.level-card:not(:disabled)').count(), 99, 'every level must be playable from the start');
   await snapshot(first, 'chapters');
   await first.locator('.level-card').first().tap();
   const initial = await state(first); await step(first, 8000);
@@ -73,7 +72,7 @@ try {
   await first.context().close();
 
   const routes = JSON.parse(fs.readFileSync('test/fixtures/level-routes.json', 'utf8'));
-  const feedback = await makePage({ unlocked: true });
+  const feedback = await makePage();
   await feedback.locator('#title-select-btn').tap(); await feedback.locator('.level-card').nth(4).tap();
   await touch(feedback, 110, 997); await step(feedback, 80);
   await touch(feedback, 620, 1100, 4000, false);
@@ -94,7 +93,7 @@ try {
   await snapshot(failure, 'game-over'); await failure.locator('#continue-btn').tap();
   assert.equal((await state(failure)).health, 3); assert.equal((await state(failure)).moves, 0);
   await failure.context().close();
-  const all = await makePage({ unlocked: true });
+  const all = await makePage();
   const runs = [];
   for (let index = 0; index < routes.length; index++) {
     if (index === 0) await all.locator('#title-select-btn').tap();
@@ -158,7 +157,7 @@ try {
   await snapshot(doomed, 'game-over-cause');
   await doomed.context().close();
 
-  const pool = await makePage({ unlocked: true });
+  const pool = await makePage();
   await pool.locator('#title-select-btn').tap();
   assert.equal(await pool.locator('.level-card').count(), 99, 'the campaign list must expose all 99 levels');
   assert.match(await pool.locator('#total-stars').textContent(), /\/ 297/);
@@ -183,7 +182,7 @@ try {
       assert.ok(rect && rect.y >= frame.y && rect.y + rect.height <= frame.y + frame.height + 1, `${id} clipped at ${viewport.width}`);
     }
     await page.reload(); await step(page, 0); await page.locator('#title-select-btn').tap();
-    assert.equal(await page.locator('.level-card:not(:disabled)').count(), 2);
+    assert.equal(await page.locator('.level-card:not(:disabled)').count(), 99);
     assert.equal((await state(page)).progression.levels.f01.stars, 3);
     await page.context().close();
   }
