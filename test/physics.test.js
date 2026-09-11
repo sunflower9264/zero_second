@@ -40,7 +40,7 @@ test('a nonlethal armored hit leaves enough separation for the dash cooldown', (
 });
 
 test('all level entities start outside walls and player bounds', () => {
-  assert.equal(LEVELS.length, 20);
+  assert.ok(LEVELS.length >= 99, 'the whole campaign is validated here, not just the opening');
   const invalid = [];
   for (const level of LEVELS) {
     const walls = level.walls.map(([x, y, w, h]) => ({ x, y, w, h }));

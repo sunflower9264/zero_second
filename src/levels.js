@@ -1,22 +1,36 @@
+import { GENERATED_LEVELS } from './generated-levels.js';
+
+// Chapter sizes drive the level-select headings: 4x5 hand-authored + 11x6 + 13 generated = 99.
 export const CHAPTERS = [
-  { name: '瞬袭入门' },
-  { name: '读懂火线' },
-  { name: '破甲协议' },
-  { name: '路线大师' },
-  { name: '核心行动' },
+  { name: '瞬袭入门', size: 4 },
+  { name: '读懂火线', size: 4 },
+  { name: '破甲协议', size: 4 },
+  { name: '路线大师', size: 4 },
+  { name: '核心行动', size: 4 },
+  { name: '深入敌后', size: 11 },
+  { name: '封锁区', size: 11 },
+  { name: '铁壁回廊', size: 11 },
+  { name: '无声突入', size: 11 },
+  { name: '高压走廊', size: 11 },
+  { name: '终局回路', size: 11 },
+  { name: '零秒深渊', size: 13 },
 ];
 
-export const LEVELS = [
+// Levels 1-20 are hand-authored and teach every mechanic in turn; 21-99 come from
+// scripts/gen-levels.mjs. They are deliberately not distinguished anywhere past this point.
+const HANDCRAFTED = [
   {
     id: 'f01', name: '静默直线', code: '01 / TRACE', parMoves: 4, difficulty: 1,
-    brief: '按住拖向红色守卫，松手突袭。击破守卫、收齐青色数据，再前往撤离门。',
-    start: [360, 1100], portal: [360, 170], chips: [[360, 380]],
+    // One verb only. Data collection and the exit condition move to F02 so the first lesson is
+    // "hold, aim, release, kill" and nothing else.
+    brief: '按住并拖向红色守卫，松手突袭。击破全部守卫，撤离门就会打开。',
+    start: [360, 1100], portal: [360, 170], chips: [],
     enemies: [['hunter', 360, 860], ['hunter', 360, 620]], walls: [], items: [],
   },
   {
     id: 'f02', name: '折线追踪', code: '02 / ZIG', parMoves: 5, difficulty: 1.5,
     tutorial: true,
-    brief: '击破守卫会立刻刷新冲刺，可以接着打下一个。连不上时冲刺才会进入冷却。',
+    brief: '青色数据要沿路收齐。守卫和数据全部清空，撤离门才会开启。',
     start: [100, 1100], portal: [220, 180], chips: [[440, 760], [420, 360]],
     enemies: [['hunter', 220, 900], ['hunter', 600, 560]], walls: [], items: [],
   },
@@ -138,3 +152,5 @@ export const LEVELS = [
     items: [['shield', 620, 1050], ['jammer', 600, 880], ['medkit', 100, 650]],
   },
 ];
+
+export const LEVELS = [...HANDCRAFTED, ...GENERATED_LEVELS];

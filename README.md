@@ -2,8 +2,9 @@
 
 一款纯手机触控的单指 H5 动作游戏。拖向目标进入子弹时间，松手瞬移突袭；击破守卫会立即刷新冲刺，形成连续决策与连击得分。
 
-- 20 个手工关卡，按 `教学 → 发展 → 变化 → 考核` 分为五组递进章节。
-- **每日挑战与无尽突围**：90 关程序化生成的备选关卡，全部经真实游戏循环验证过可无伤通关。
+- **99 关一条主线**，分为 12 个章节。不区分手工与生成：前 20 关手工编写并逐一教授机制，其余由
+  `scripts/gen-levels.mjs` 生成，**每一关都在真实游戏循环里验证过可无伤通关**才允许入场。
+- 生成的关卡会故意让墙横切最短路线，逼迫玩家重新排序，而不是沿着显而易见的路线一路走到底。
 - **匿名埋点**：关卡开始/失败/通关/退出与死因上报到自建收集端，用来定位流失点。
 - 首次触摸才开始行动；仅第一关及新敌人、新道具首次出现的关卡显示教学，炮塔开火前锁定方向并显示预警线。
 - 冷却期间可以继续瞄准，提前松手会在恢复后执行；重甲回退落点与瞄准预览一致。
@@ -49,11 +50,11 @@ sudo nginx -t && sudo systemctl reload nginx
 ## 自动检查接口
 
 ```bash
-npm test                  # 物理、存档、每日/无尽、分享与全部关卡的真实逻辑路线
+npm test                  # 物理、存档、分享，以及全部 99 关的真实游戏循环重放
 npx playwright install chromium  # 首次运行浏览器验证时安装
 npm run test:browser      # 自动启动本地服务，真实触控重放、截图与错误检查
 npm run audit:levels      # 搜索手工关卡的无伤通关路线，输出至 output/level-audit/
-npm run gen:daily         # 生成每日/无尽关卡池，写入 src/daily-levels.js
+npm run gen:levels        # 生成第 21-99 关，写入 src/generated-levels.js
 npm run port:check        # 检查规则层模块是否仍然不依赖浏览器
 npm run report -- --funnel  # 读取埋点数据库：--funnel/--pacing/--deaths/--retention/--sessions
 ```

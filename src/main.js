@@ -3,9 +3,7 @@ import { CHAPTERS, LEVELS } from './levels.js';
 import { circleOverlapsRect, isCirclePositionValid, nearestValidCirclePosition, safeCircleEndpoint, stopBeforeCircle } from './physics.js';
 import { bestSingleLevelScore, calculateStars, createDefaultProgress, isRecordBetter, sanitizeProgress, totalStars } from './progress.js';
 import { createTracker, newSessionId } from './analytics.js';
-import { BOUNDS, FIELD_BOTTOM, FIELD_TOP, H, MAX_DASH, PLAYER_R, TAU, W } from './constants.js';
-import { DAILY_LEVELS } from './daily-levels.js';
-import { dailyIndex, dayKey, previousDayKey } from './daily.js';
+import { BOUNDS, COMBO_WINDOW, FIELD_BOTTOM, FIELD_TOP, H, MAX_DASH, PLAYER_R, TAU, W } from './constants.js';
 import { buildShareText, shareOrCopy } from './share.js';
 
 const canvas = document.querySelector('#game');
@@ -28,7 +26,7 @@ const ui = {
   home: document.querySelector('#home-btn'), best: document.querySelector('#best-label'), resultKicker: document.querySelector('#result-kicker'),
   resultTitle: document.querySelector('#result-title'), resultStars: document.querySelector('#result-stars'), resultScore: document.querySelector('#result-score'), resultStats: document.querySelector('#result-stats'),
   levelGrid: document.querySelector('#level-grid'), totalStars: document.querySelector('#total-stars'), levelBack: document.querySelector('#level-back-btn'), pauseSelect: document.querySelector('#pause-select-btn'), replay: document.querySelector('#replay-btn'), select: document.querySelector('#select-btn'),
-  daily: document.querySelector('#daily-btn'), endless: document.querySelector('#endless-btn'), share: document.querySelector('#share-btn'),
+  share: document.querySelector('#share-btn'), progress: document.querySelector('#progress-label'),
 };
 const particlePool = Array.from({ length: 180 }, () => ({ active: false }));
 let storageAvailable = true;
@@ -59,7 +57,7 @@ const state = {
   player: { x: 360, y: 1080, vx: 0, vy: 0, invuln: 0 }, lastSafePlayer: { x: 360, y: 1080 },
   portal: { x: 360, y: 190, open: false }, enemies: [], chips: [], items: [], bullets: [], walls: [], trails: [], aiming: false, aimPointerId: null, aim: { x: 360, y: 800 },
   ready: true, queuedDash: null, dashCooldown: 0, wallContactGrace: 0, combo: 0, maxCombo: 0, comboTimer: 0,
-  levelData: null, difficultyTier: 0, runMode: 'campaign', dailyKey: '', endlessIndex: 0, lastRating: null,
+  levelData: null, difficultyTier: 0, runMode: 'campaign', lastRating: null,
   elapsed: 0, realElapsed: 0, damageTally: {}, floorStartScore: 0, floorHits: 0, floorMoves: 0, kills: 0, trauma: 0, flash: 0, hitStop: 0,
   mute: readStorage('zero-second-muted') === '1',
   reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches, testMode: false,
@@ -82,10 +80,16 @@ function saveProgress() { writeStorage('zero-second-progress-v1', JSON.stringify
 function renderLevelSelect() {
   ui.totalStars.textContent = `★ ${totalStars(state.progress)} / ${LEVELS.length * 3}`;
   ui.levelGrid.innerHTML = '';
+  // Chapter headings are placed from the declared sizes rather than a fixed stride, so the
+  // hand-authored opening and the generated tail can be different lengths.
+  const chapterStart = new Map();
+  let cursor = 0;
+  CHAPTERS.forEach((chapter, position) => { chapterStart.set(cursor, { name: chapter.name, number: position + 1 }); cursor += chapter.size; });
   LEVELS.forEach((level, index) => {
-    if (index % 4 === 0) {
+    const chapter = chapterStart.get(index);
+    if (chapter) {
       const heading = document.createElement('h3'); heading.className = 'chapter-heading';
-      heading.textContent = `${String(index / 4 + 1).padStart(2, '0')}  ${CHAPTERS[index / 4].name}`;
+      heading.textContent = `${String(chapter.number).padStart(2, '0')}  ${chapter.name}`;
       ui.levelGrid.appendChild(heading);
     }
     const unlocked = index < state.progress.unlockedThrough;
@@ -106,48 +110,23 @@ function startAtLevel(index) {
   tracker.track('level_start', { levelId: LEVELS[index].id, index });
 }
 
-// `key` is injectable so tests can pin a calendar day instead of depending on the wall clock.
-function startDaily(key) {
-  if (!DAILY_LEVELS.length) return false;
-  const day = key || dayKey(Date.now());
-  state.runMode = 'daily'; state.dailyKey = day;
-  state.floor = dailyIndex(day, DAILY_LEVELS.length);
-  state.score = 0; state.hp = 3; state.kills = 0; state.maxCombo = 0;
-  cloneLevelData(DAILY_LEVELS[state.floor]);
-  state.mode = 'playing'; setVisibleScreen(); sfx('start');
-  tracker.track('level_start', { levelId: activeLevel().id, index: state.floor, source: 'daily', day });
-  return true;
-}
-
-function enterEndlessFloor(index) {
-  state.endlessIndex = index;
-  state.floor = index % DAILY_LEVELS.length;
-  const base = DAILY_LEVELS[state.floor];
-  state.hp = 3; state.kills = 0; state.maxCombo = 0;
-  // Pressure climbs every lap through the pool rather than resetting to the same tier.
-  cloneLevelData({ ...base, difficultyTier: base.difficultyTier + Math.floor(index / DAILY_LEVELS.length) * 3 });
-  state.mode = 'playing'; setVisibleScreen(); sfx('start');
-}
-function startEndless() {
-  if (!DAILY_LEVELS.length) return false;
-  state.runMode = 'endless'; state.endlessIndex = 0; state.score = 0;
-  enterEndlessFloor(0);
-  tracker.track('level_start', { levelId: activeLevel().id, index: 0, source: 'endless' });
-  return true;
-}
-
 let audioCtx = null;
 let lastFrame = performance.now();
 let dpr = 1;
 
-// `state.levelData` is the level actually being played: a handcrafted LEVELS entry during the
-// campaign, or an object handed in by the daily/endless pools. `activeLevel()` is the only reader.
+// `state.levelData` is the level actually being played: a LEVELS entry during the campaign, or a
+// candidate handed in by the offline generator. `activeLevel()` is the only reader.
 function activeLevel() { return state.levelData || LEVELS[state.floor]; }
 
 function cloneLevelData(data) {
   state.levelData = data;
-  // Enemy speed and turret cadence scale with this, and a generated level has no index of its own.
-  state.difficultyTier = Number.isFinite(data.difficultyTier) ? data.difficultyTier : state.floor;
+  // Enemy speed and turret cadence scale with this. It follows the level's *authored* difficulty,
+  // not its index: the campaign is a sawtooth (each chapter opens easier than the last one ended),
+  // while an index is monotonic — which handed the F05 and F09 teaching levels the fastest enemies
+  // in the game so far. Index remains the fallback for data that carries no difficulty.
+  state.difficultyTier = Number.isFinite(data.difficultyTier) ? data.difficultyTier
+    : Number.isFinite(data.difficulty) ? (data.difficulty - 1) * 4.2
+      : state.floor;
   state.walls = data.walls.map(([x, y, w, h]) => ({ x, y, w, h }));
   if (!isCirclePositionValid(data.start[0], data.start[1], PLAYER_R, state.walls, BOUNDS)) {
     throw new Error(`Invalid player start in ${data.id}`);
@@ -190,12 +169,10 @@ function restartFloor() {
 }
 
 function refreshTitle() {
-  const { daily, endless } = state.progress;
+  const cleared = Object.keys(state.progress.levels).length;
   ui.start.innerHTML = state.progress.unlockedThrough > 1 ? '继续行动 <span>↗</span>' : '开始行动 <span>↗</span>';
   ui.best.textContent = `最佳单关 ${String(bestSingleLevelScore(state.progress)).padStart(6, '0')}`;
-  const today = daily.entries[dayKey(Date.now())];
-  ui.daily.innerHTML = `每日挑战<small>${today ? `今日 ${today.stars} 星` : daily.streak > 1 ? `连续 ${daily.streak} 天` : '每天一关'}</small>`;
-  ui.endless.innerHTML = `无尽突围<small>${endless.bestFloor > 0 ? `最远 ${endless.bestFloor + 1} 层` : '一条命打到底'}</small>`;
+  ui.progress.textContent = `已通关 ${cleared} / ${LEVELS.length}  ·  星 ${totalStars(state.progress)} / ${LEVELS.length * 3}`;
 }
 function goHome() {
   state.mode = 'title'; state.floor = 0; state.runMode = 'campaign'; cloneLevel(0);
@@ -294,9 +271,7 @@ function showResult(kind) {
     [isClear || isVictory ? `${state.floorMoves}/${activeLevel().parMoves}` : state.floorMoves, isClear || isVictory ? '移动/目标' : '移动'],
     [state.floorHits, '受伤'], [isClear || isVictory ? floorScore : state.kills, isClear || isVictory ? '本层得分' : '击破'],
   ].map(([value, label]) => `<div class="stat"><b>${value}</b><small>${label}</small></div>`).join('');
-  const continueLabel = isVictory ? '选择关卡'
-    : kind === 'gameOver' ? '重试本关'
-      : state.runMode === 'endless' ? '继续深入' : state.runMode === 'daily' ? '返回标题' : '进入下一层';
+  const continueLabel = isVictory ? '选择关卡' : kind === 'gameOver' ? '重试本关' : '进入下一层';
   ui.continue.innerHTML = `${continueLabel} <span>↗</span>`;
   ui.replay.style.display = isClear || isVictory ? '' : 'none';
   ui.share.style.display = isClear || isVictory ? '' : 'none';
@@ -309,33 +284,20 @@ function showResult(kind) {
   setVisibleScreen('result');
 }
 
-function recordDaily(key, rating, floorScore) {
-  const daily = state.progress.daily;
-  const previous = daily.entries[key];
-  const bestScore = Math.max(previous?.bestScore || 0, floorScore);
-  const next = { stars: rating.stars, moves: rating.moves, hits: rating.hits, bestScore };
-  daily.entries[key] = previous && !isRecordBetter(next, previous) ? { ...previous, bestScore } : next;
-  if (daily.last !== key) {
-    daily.streak = daily.last === previousDayKey(key) ? daily.streak + 1 : 1;
-    daily.bestStreak = Math.max(daily.bestStreak, daily.streak);
-    daily.last = key;
-  }
-}
-
 function finishFloor() {
   const data = activeLevel();
   const moveBonus = Math.max(0, data.parMoves - state.floorMoves) * 150;
   state.score += 700 + moveBonus + state.hp * 250;
   const floorScore = state.score - state.floorStartScore;
   const rating = { stars: calculateStars(data.parMoves, state.floorMoves, state.floorHits), moves: state.floorMoves, hits: state.floorHits, bestScore: 0 };
-  // Generated levels carry ids the campaign save has no slot for, so only campaign clears are
-  // written into progress.levels; daily and endless keep their own records.
+  // Every level now lives in the one campaign list, so a clear always writes progress. The
+  // generator runs against 'scratch' levels that have no slot, and those are skipped.
   if (state.runMode === 'campaign') {
     const previous = state.progress.levels[data.id];
     rating.bestScore = Math.max(previous?.bestScore || 0, floorScore);
     state.progress.levels[data.id] = isRecordBetter(rating, previous) ? rating : { ...previous, bestScore: rating.bestScore };
     state.progress.unlockedThrough = Math.min(LEVELS.length, Math.max(state.progress.unlockedThrough, state.floor + 2));
-  } else if (state.runMode === 'daily') recordDaily(state.dailyKey, rating, floorScore);
+  }
   state.lastRating = rating; saveProgress();
   const isFinal = state.runMode === 'campaign' && state.floor === LEVELS.length - 1;
   tracker.track('level_end', {
@@ -350,8 +312,7 @@ function finishFloor() {
 
 function continueResult() {
   if (state.mode === 'floorClear') {
-    if (state.runMode === 'endless') { enterEndlessFloor(state.endlessIndex + 1); return; }
-    if (state.runMode === 'daily') { goHome(); return; }
+    if (state.floor + 1 >= LEVELS.length) { goHome(); return; }
     state.floor += 1; state.hp = Math.min(3, state.hp + 1); cloneLevel(state.floor); state.mode = 'playing'; setVisibleScreen(); sfx('start');
   } else if (state.mode === 'gameOver') restartFloor();
   else openLevelSelect();
@@ -361,12 +322,6 @@ function gameOver() {
   tracker.track('death', { levelId: activeLevel().id, cause: dominantCause() || 'unknown', tally: state.damageTally, moves: state.floorMoves, guardsLeft: state.enemies.filter(enemy => !enemy.dead).length, dataLeft: state.chips.filter(chip => !chip.collected).length });
   tracker.track('level_end', { outcome: 'gameOver', levelId: activeLevel().id, moves: state.floorMoves, hits: state.floorHits, kills: state.kills, realMs: Math.round(state.realElapsed * 1000) });
   tracker.flush('gameOver');
-  if (state.runMode === 'endless') {
-    state.progress.endless.runs += 1;
-    state.progress.endless.bestFloor = Math.max(state.progress.endless.bestFloor, state.endlessIndex);
-    state.progress.endless.bestScore = Math.max(state.progress.endless.bestScore, state.score);
-    saveProgress();
-  }
   sfx('fail'); showResult('gameOver');
 }
 
@@ -500,7 +455,7 @@ function dashToward(targetX, targetY) {
     enemy.hp -= 1; enemy.hurt = .2; burst(enemy.x, enemy.y, enemy.hp <= 0 ? COLORS.signal : COLORS.yellow, enemy.hp <= 0 ? 18 : 10, 240);
     if (enemy.hp <= 0) {
       enemy.dead = true; defeats += 1; state.kills += 1; state.combo += 1; state.maxCombo = Math.max(state.maxCombo, state.combo);
-      state.comboTimer = 2.25; state.score += 100 * state.combo; sfx('kill');
+      state.comboTimer = COMBO_WINDOW; state.score += 100 * state.combo; sfx('kill');
     } else {
       state.score += 30; sfx('hit');
     }
@@ -576,7 +531,10 @@ function update(dt) {
     if (state.mode !== 'playing' || state.hitStop > 0) return;
   }
   state.player.invuln = Math.max(0, state.player.invuln - worldDt);
-  if (state.comboTimer > 0) { state.comboTimer -= worldDt; if (state.comboTimer <= 0) state.combo = 0; }
+  // Real time, not world time: holding to aim must not freeze the chain. This is what gives the
+  // player something to commit to — you can still think as long as you like, but every second of
+  // thinking is a second closer to dropping the chain.
+  if (state.comboTimer > 0) { state.comboTimer -= dt; if (state.comboTimer <= 0) state.combo = 0; }
   for (const chip of state.chips) chip.spin += worldDt * 2.4;
   for (const item of state.items) item.spin += worldDt * 2.1;
   for (const enemy of state.enemies) {
@@ -755,7 +713,11 @@ function drawHud() {
   if (state.armor > 0) { ctx.fillStyle = COLORS.cyan; ctx.beginPath(); ctx.arc(400, 92, 10, 0, TAU); ctx.fill(); ctx.fillStyle = COLORS.ink; ctx.font = '900 11px system-ui'; ctx.fillText('甲', 393, 96); }
   if (state.combo > 1) {
     ctx.save(); ctx.translate(W - 34, 142); ctx.textAlign = 'right'; ctx.fillStyle = COLORS.signal; ctx.font = '900 48px "Arial Narrow", system-ui'; ctx.fillText(`${state.combo}×`, 0, 0);
-    ctx.fillStyle = COLORS.ink; ctx.font = '800 14px system-ui'; ctx.fillText('CHAIN', 0, 19); ctx.restore();
+    ctx.fillStyle = COLORS.ink; ctx.font = '800 14px system-ui'; ctx.fillText('CHAIN', 0, 19);
+    // The chain now runs on real time, so show it draining — otherwise the pressure is invisible.
+    ctx.fillStyle = 'rgba(20,33,61,.18)'; ctx.fillRect(-120, 26, 120, 5);
+    ctx.fillStyle = COLORS.signal; ctx.fillRect(-120, 26, 120 * Math.max(0, Math.min(1, state.comboTimer / COMBO_WINDOW)), 5);
+    ctx.restore();
   }
   if (state.dashCooldown > 0) {
     const ratio = 1 - state.dashCooldown / .64; ctx.fillStyle = 'rgba(20,33,61,.18)'; ctx.fillRect(0, H - 10, W, 10);
@@ -832,7 +794,6 @@ function toggleMute() {
   state.mute = !state.mute; writeStorage('zero-second-muted', state.mute ? '1' : '0'); ui.sound.textContent = state.mute ? '静' : '声'; ui.sound.setAttribute('aria-label', state.mute ? '取消静音' : '静音');
 }
 ui.start.addEventListener('click', () => startAtLevel(state.progress.unlockedThrough - 1)); document.querySelector('#title-select-btn').addEventListener('click', openLevelSelect);
-ui.daily.addEventListener('click', () => startDaily()); ui.endless.addEventListener('click', () => startEndless());
 ui.pause.addEventListener('click', () => pauseGame(true)); ui.sound.addEventListener('click', toggleMute);
 ui.resume.addEventListener('click', () => pauseGame(false)); ui.restart.addEventListener('click', restartFloor); ui.pauseSelect.addEventListener('click', openLevelSelect);
 ui.continue.addEventListener('click', continueResult); ui.replay.addEventListener('click', restartFloor); ui.select.addEventListener('click', openLevelSelect); ui.home.addEventListener('click', goHome); ui.levelBack.addEventListener('click', goHome);

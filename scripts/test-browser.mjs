@@ -24,7 +24,7 @@ async function makePage({ unlocked = false, viewport, blocked = false } = {}) {
     window.__zsShared = [];
     Object.defineProperty(navigator, 'share', { configurable: true, value: async payload => { window.__zsShared.push(payload); } });
   });
-  if (unlocked) await page.addInitScript(() => localStorage.setItem('zero-second-progress-v1', JSON.stringify({ version: 2, unlockedThrough: 20, levels: {} })));
+  if (unlocked) await page.addInitScript(() => localStorage.setItem('zero-second-progress-v1', JSON.stringify({ version: 2, unlockedThrough: 99, levels: {} })));
   if (blocked) await page.addInitScript(() => { Storage.prototype.getItem = Storage.prototype.setItem = () => { throw new DOMException('Blocked', 'SecurityError'); }; });
   await page.goto(url); await page.evaluate(() => window.advanceTime(0));
   return page;
@@ -158,29 +158,19 @@ try {
   await snapshot(doomed, 'game-over-cause');
   await doomed.context().close();
 
-  const modes = await makePage({ unlocked: true });
-  assert.equal(await modes.locator('#daily-btn').isVisible(), true);
-  assert.equal(await modes.locator('#endless-btn').isVisible(), true);
-  await modes.locator('#daily-btn').tap();
-  const dailyRun = await state(modes);
-  assert.equal(dailyRun.mode, 'playing');
-  assert.match(dailyRun.floorName, /每日/, 'the daily button must serve a generated level');
-  await snapshot(modes, 'daily-start');
-  await modes.context().close();
-
-  const endless = await makePage({ unlocked: true });
-  await endless.locator('#endless-btn').tap();
-  const endlessRun = await state(endless);
-  assert.equal(endlessRun.mode, 'playing');
-  assert.match(endlessRun.floorName, /每日/, 'endless draws from the same generated pool');
-  await snapshot(endless, 'endless-start');
-  await endless.context().close();
+  const pool = await makePage({ unlocked: true });
+  await pool.locator('#title-select-btn').tap();
+  assert.equal(await pool.locator('.level-card').count(), 99, 'the campaign list must expose all 99 levels');
+  assert.match(await pool.locator('#total-stars').textContent(), /\/ 297/);
+  assert.ok(await pool.locator('.chapter-heading').count() >= 10, 'the list must still be split into chapters');
+  await snapshot(pool, 'level-pool');
+  await pool.context().close();
 
   for (const viewport of [{ width: 320, height: 568 }, { width: 430, height: 932 }]) {
     const page = await makePage({ viewport });
     await snapshot(page, `title-${viewport.width}`);
     const titleFrame = await page.locator('#app').boundingBox();
-    for (const id of ['#start-btn', '#daily-btn', '#endless-btn', '#title-select-btn']) {
+    for (const id of ['#start-btn', '#title-select-btn', '#progress-label', '#best-label']) {
       const rect = await page.locator(id).boundingBox();
       assert.ok(rect && rect.y >= titleFrame.y && rect.y + rect.height <= titleFrame.y + titleFrame.height + 1, `${id} clipped on the title screen at ${viewport.width}`);
     }

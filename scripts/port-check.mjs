@@ -1,5 +1,5 @@
 // Portability guardrail. The plan is web first and a WeChat/Douyin mini-game port later, so the
-// rules layer (levels, physics, progress, daily, share, analytics, constants) has to stay free of
+// rules layer (levels, physics, progress, share, analytics, constants) has to stay free of
 // browser globals. Only the presentation layer is allowed to touch the DOM, and this script fails
 // the build if that ever stops being true.
 import fs from 'node:fs';

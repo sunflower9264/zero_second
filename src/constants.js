@@ -7,6 +7,7 @@ export const FIELD_TOP = 118;
 export const FIELD_BOTTOM = 1210;
 export const MAX_DASH = 270;
 export const PLAYER_R = 19;
+export const COMBO_WINDOW = 2.25;   // seconds of *real* time to land the next kill before the chain drops
 export const BOUNDS = { left: 0, right: W, top: FIELD_TOP, bottom: FIELD_BOTTOM };
 export const TAU = Math.PI * 2;
 

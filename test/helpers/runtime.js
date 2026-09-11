@@ -5,8 +5,6 @@ import * as physics from '../../src/physics.js';
 import * as progress from '../../src/progress.js';
 import * as analytics from '../../src/analytics.js';
 import * as constants from '../../src/constants.js';
-import * as daily from '../../src/daily.js';
-import { DAILY_LEVELS, DAILY_ROUTES } from '../../src/daily-levels.js';
 import * as share from '../../src/share.js';
 
 // Execute the actual game loop; only browser rendering/audio/storage are stubbed.
@@ -21,7 +19,7 @@ export function createRuntime({ storageBlocked = false, savedProgress, analytics
   const collected = [];
   const sink = analyticsSink || (body => collected.push(body));
   const sandbox = {
-    ...physics, ...progress, ...analytics, ...constants, ...daily, ...share, DAILY_LEVELS, DAILY_ROUTES, CHAPTERS, LEVELS, console, performance: { now: () => 0 },
+    ...physics, ...progress, ...analytics, ...constants, ...share, CHAPTERS, LEVELS, console, performance: { now: () => 0 },
     document: { querySelector: key => { if (!elements.has(key)) elements.set(key, element()); return elements.get(key); }, createElement: element, addEventListener() {} },
     localStorage: { getItem: key => { if (storageBlocked) throw new Error('Storage blocked'); return store.get(key) ?? null; },
       setItem: (key, value) => { if (storageBlocked) throw new Error('Storage blocked'); store.set(key, value); } },
@@ -30,7 +28,7 @@ export function createRuntime({ storageBlocked = false, savedProgress, analytics
   };
   const source = fs.readFileSync(new URL('../../src/main.js', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
   vm.createContext(sandbox);
-  vm.runInContext(`${source}\n particlePool.length = 0; globalThis.game = { state, startAtLevel, restartFloor, continueResult, pauseGame, onPointerDown, onPointerUp, onPointerMove, cancelPointer, dashToward, planDash, collectItem, update, damagePlayer, finishFloor, renderGameToText, loadLevelData, startLevelData, cloneLevelData, activeLevel, startDaily, startEndless };`, sandbox);
+  vm.runInContext(`${source}\n particlePool.length = 0; globalThis.game = { state, startAtLevel, restartFloor, continueResult, pauseGame, onPointerDown, onPointerUp, onPointerMove, cancelPointer, dashToward, planDash, collectItem, update, damagePlayer, finishFloor, renderGameToText, loadLevelData, startLevelData, cloneLevelData, activeLevel };`, sandbox);
   const game = sandbox.game;
   game.state.mute = true;
   game.state.progress.unlockedThrough = LEVELS.length;

@@ -1,5 +1,5 @@
 // Beam search over the real game loop. Shared by scripts/audit-levels.mjs (which audits the
-// handcrafted campaign) and scripts/gen-daily.mjs (which refuses to ship a generated level it
+// hand-authored opening) and scripts/gen-levels.mjs (which refuses to ship a level it
 // cannot clear). The search is deliberately unchanged from the version that produced the existing
 // fixture routes: retuning the metric or the dedup grid would silently invalidate that work.
 import { BOUNDS, MAX_DASH, PLAYER_R, SOLVER } from '../../src/constants.js';

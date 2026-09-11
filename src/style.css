@@ -144,31 +144,15 @@ button { font: inherit; }
   #orientation-screen b { font-size: 32px; }
   #orientation-screen span { font-size: 16px; }
 }
-.mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-
-.mode-btn {
-  min-height: 52px;
-  padding: 0 10px;
-  border: 2px solid var(--ink);
-  background: rgba(255,255,255,.42);
-  color: var(--ink);
-  font-size: clamp(14px, 3.6vw, 18px);
-  font-weight: 900;
-  cursor: pointer;
-  box-shadow: 4px 4px 0 var(--ink);
-  transition: transform .13s ease, box-shadow .13s ease;
-}
-
-.mode-btn:hover, .mode-btn:focus-visible { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); outline: 3px solid rgba(22,185,187,.45); }
-.mode-btn small { display: block; margin-top: 2px; font-size: 10px; font-weight: 800; opacity: .62; }
-
 #title-select-btn { margin-top: 14px; }
+.progress-copy { color: var(--ink); opacity: .82; }
 #title-screen .microcopy { margin-top: 8px; }
 
+/* Sized for a 99-entry list: 25 rows at the old 88px made the board a very long scroll. */
 .level-card {
   position: relative;
-  min-height: 88px;
-  padding: 9px 5px 7px;
+  min-height: 66px;
+  padding: 7px 5px 6px;
   border: 2px solid var(--ink);
   background: rgba(255,255,255,.42);
   color: var(--ink);
@@ -194,7 +178,7 @@ button { font: inherit; }
   background: rgba(20,33,61,.06);
 }
 
-.level-number { font-family: Impact, "Arial Narrow", sans-serif; font-size: 26px; line-height: 1; }
+.level-number { font-family: Impact, "Arial Narrow", sans-serif; font-size: 21px; line-height: 1; }
 .level-name { width: 100%; overflow: hidden; font-size: 11px; font-weight: 800; white-space: nowrap; text-overflow: ellipsis; }
 .level-stars { color: var(--signal); font-size: 12px; letter-spacing: .04em; white-space: nowrap; }
 .level-lock { align-self: center; margin: auto; font-size: 13px; font-weight: 900; }

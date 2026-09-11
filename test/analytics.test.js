@@ -63,14 +63,14 @@ test('clearing a level emits session_start, level_start, first_dash and a scored
 
 test('a death reports its cause and the remaining objective state', () => {
   const game = createRuntime();
-  game.startAtLevel(0);
+  game.startAtLevel(1);   // f02 carries both guards and data, so the objective snapshot is non-trivial
   for (let i = 0; i < 3; i += 1) { game.damagePlayer(0, 0, 'hunter'); game.state.player.invuln = 0; }
   assert.equal(game.state.mode, 'gameOver');
   const death = game.eventsNamed('death')[0];
   assert.equal(death.p.cause, 'hunter');
   assert.equal(death.p.tally.hunter, 3);
   assert.equal(death.p.guardsLeft, 2);
-  assert.equal(death.p.dataLeft, 1);
+  assert.equal(death.p.dataLeft, 2);
   assert.equal(game.eventsNamed('level_end')[0].p.outcome, 'gameOver');
 });
 
