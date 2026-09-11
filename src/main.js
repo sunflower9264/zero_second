@@ -738,19 +738,21 @@ function drawTelegraphs() {
 
 function drawHud() {
   if (state.mode === 'title') return; const data = activeLevel(); ctx.fillStyle = COLORS.paper; ctx.fillRect(0, 0, W, FIELD_TOP);
-  ctx.fillStyle = COLORS.ink; ctx.font = '900 26px system-ui'; ctx.textAlign = 'left'; ctx.fillText(`F${state.floor + 1}  ${data.name}`, 28, 42);
-  ctx.font = '800 18px system-ui'; ctx.fillStyle = 'rgba(20,33,61,.58)'; ctx.fillText(data.code, 28, 72);
-  ctx.textAlign = 'center'; ctx.fillStyle = COLORS.signal; ctx.font = '900 34px "Arial Narrow", system-ui'; ctx.fillText(String(state.score).padStart(6, '0'), W / 2, 52);
-  ctx.fillStyle = COLORS.ink; ctx.font = '700 14px system-ui'; ctx.fillText('SCORE', W / 2, 75);
+  ctx.fillStyle = COLORS.ink; ctx.font = '900 22px system-ui'; ctx.textAlign = 'left'; ctx.fillText(`F${state.floor + 1}  ${data.name}`, 28, 38);
+  ctx.font = '800 15px system-ui'; ctx.fillStyle = 'rgba(20,33,61,.58)'; ctx.fillText(data.code, 28, 62);
+  ctx.textAlign = 'center'; ctx.fillStyle = COLORS.signal; ctx.font = '900 30px "Arial Narrow", system-ui'; ctx.fillText(String(state.score).padStart(6, '0'), W / 2, 40);
+  ctx.fillStyle = COLORS.ink; ctx.font = '700 12px system-ui'; ctx.fillText('SCORE', W / 2, 62);
   const liveEnemies = state.enemies.filter(e => !e.dead).length; const liveChips = state.chips.filter(c => !c.collected).length;
-  ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(243,237,221,.92)'; roundedRect(22, 102, 398, 48, 20); ctx.fill();
-  ctx.fillStyle = COLORS.ink; ctx.font = '800 17px system-ui'; ctx.fillText(`守卫 ${liveEnemies}   数据 ${liveChips}`, 42, 133);
-  ctx.fillStyle = 'rgba(20,33,61,.58)'; ctx.font = '700 14px system-ui'; ctx.fillText('生命', 242, 132);
+  // Everything here must end above FIELD_TOP: every exit portal sits at y >= 170, and its arch
+  // reaches up to y ~127, so a bar that spills into the play field hides the objective.
+  ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(243,237,221,.92)'; roundedRect(22, 72, 420, 40, 20); ctx.fill();
+  ctx.fillStyle = COLORS.ink; ctx.font = '800 16px system-ui'; ctx.fillText(`守卫 ${liveEnemies}   数据 ${liveChips}`, 42, 98);
+  ctx.fillStyle = 'rgba(20,33,61,.58)'; ctx.font = '700 13px system-ui'; ctx.fillText('生命', 250, 97);
   for (let i = 0; i < 3; i += 1) {
     ctx.fillStyle = i < state.hp ? COLORS.signal : 'rgba(20,33,61,.15)';
-    ctx.beginPath(); ctx.arc(286 + i * 30, 126, 9, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(296 + i * 30, 92, 8.5, 0, TAU); ctx.fill();
   }
-  if (state.armor > 0) { ctx.fillStyle = COLORS.cyan; ctx.beginPath(); ctx.arc(397, 126, 10, 0, TAU); ctx.fill(); ctx.fillStyle = COLORS.ink; ctx.font = '900 11px system-ui'; ctx.fillText('甲', 390, 130); }
+  if (state.armor > 0) { ctx.fillStyle = COLORS.cyan; ctx.beginPath(); ctx.arc(400, 92, 10, 0, TAU); ctx.fill(); ctx.fillStyle = COLORS.ink; ctx.font = '900 11px system-ui'; ctx.fillText('甲', 393, 96); }
   if (state.combo > 1) {
     ctx.save(); ctx.translate(W - 34, 142); ctx.textAlign = 'right'; ctx.fillStyle = COLORS.signal; ctx.font = '900 48px "Arial Narrow", system-ui'; ctx.fillText(`${state.combo}×`, 0, 0);
     ctx.fillStyle = COLORS.ink; ctx.font = '800 14px system-ui'; ctx.fillText('CHAIN', 0, 19); ctx.restore();
