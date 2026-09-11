@@ -76,6 +76,12 @@ function loadProgress() {
 }
 state.progress = loadProgress();
 
+// Debug flag for spot-checking the campaign without replaying it: open any level link with
+// ?unlock=all. Invisible to normal players and it only touches the local save.
+if (typeof location !== 'undefined' && /[?&]unlock=all\b/.test(location.search)) {
+  state.progress.unlockedThrough = LEVELS.length;
+}
+
 function saveProgress() { writeStorage('zero-second-progress-v1', JSON.stringify(state.progress)); }
 function renderLevelSelect() {
   ui.totalStars.textContent = `★ ${totalStars(state.progress)} / ${LEVELS.length * 3}`;
